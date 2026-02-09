@@ -54,7 +54,7 @@ const HomePage: React.FC<HomePageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 md:p-8 pb-12">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
@@ -201,7 +201,7 @@ const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             {/* Game Info Cards */}
-            <div className="mt-12 grid md:grid-cols-4 gap-4">
+            <div className="mt-16 grid md:grid-cols-4 gap-4">
               <div className="bg-slate-800/40 backdrop-blur rounded-xl p-4 border border-slate-700/30">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
