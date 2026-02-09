@@ -4,7 +4,7 @@ import { registerUser } from '@/lib/gameService';
 import { avatarPresets } from '@/data/avatarPresets';
 
 interface RegisterPageProps {
-  onRegister: (user: User) => void;
+  onRegister: (user: User, token?: string) => void;
   onBack: () => void;
 }
 
@@ -78,7 +78,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onBack }) => {
       }
 
       if (result.data) {
-        onRegister(result.data);
+        onRegister(result.data.user, result.data.token);
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed');

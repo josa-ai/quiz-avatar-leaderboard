@@ -27,7 +27,7 @@ const ChallengeJoinPage: React.FC<ChallengeJoinPageProps> = ({ user, onChallenge
     setLoading(true);
     setError('');
 
-    const result = await joinChallenge(trimmed, user.id);
+    const result = await joinChallenge(trimmed);
     if (result.error) {
       setError(result.error);
       setLoading(false);

@@ -37,7 +37,6 @@ const RewardsPage: React.FC<RewardsPageProps> = ({ user, onBack, onRedeem }) => 
 
     try {
       const result = await redeemPrize(
-        user.id,
         selectedPrize.id,
         selectedPrize.name,
         selectedPrize.pointsCost

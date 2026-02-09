@@ -42,7 +42,7 @@ const HomePage: React.FC<HomePageProps> = ({
 
   useEffect(() => {
     if (!user.id.startsWith('demo-')) {
-      getTeams(user.id).then(result => {
+      getTeams().then(result => {
         if (result.data) setSavedTeams(result.data);
       });
     }
@@ -457,7 +457,7 @@ const HomePage: React.FC<HomePageProps> = ({
                         onClick={async () => {
                           if (!saveTeamName.trim()) return;
                           setSavingTeam(true);
-                          const result = await saveTeam(user.id, saveTeamName.trim(), teamMembers);
+                          const result = await saveTeam(saveTeamName.trim(), teamMembers);
                           if (result.data) {
                             setSavedTeams(prev => [result.data!, ...prev]);
                           }

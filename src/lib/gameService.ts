@@ -7,25 +7,41 @@ interface GameServiceResponse<T> {
   error?: string;
 }
 
+// ─── Auth token management ─────────────────────────────────────────────────
+
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
+async function invokeApi(action: string, data: Record<string, unknown> = {}) {
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  return supabase.functions.invoke('game-api', {
+    body: { action, data },
+    headers,
+  });
+}
+
+// ─── Public endpoints (no auth needed) ─────────────────────────────────────
+
 // Register a new user
 export async function registerUser(
   email: string,
   username: string,
   password: string,
   avatar?: string
-): Promise<GameServiceResponse<User>> {
+): Promise<GameServiceResponse<{ user: User; token: string }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'register',
-        data: { email, username, password, avatar }
-      }
-    });
+    const { data, error } = await invokeApi('register', { email, username, password, avatar });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
 
-    return { data: data.user };
+    return { data: { user: data.user, token: data.token } };
   } catch (error: any) {
     console.error('Register error:', error);
     return { error: error.message || 'Registration failed' };
@@ -36,61 +52,17 @@ export async function registerUser(
 export async function loginUser(
   email: string,
   password: string
-): Promise<GameServiceResponse<User>> {
+): Promise<GameServiceResponse<{ user: User; token: string }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'login',
-        data: { email, password }
-      }
-    });
+    const { data, error } = await invokeApi('login', { email, password });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
 
-    return { data: data.user };
+    return { data: { user: data.user, token: data.token } };
   } catch (error: any) {
     console.error('Login error:', error);
     return { error: error.message || 'Login failed' };
-  }
-}
-
-// Save game session and update leaderboard
-export async function saveGameSession(
-  userId: string,
-  gameMode: 'solo' | 'vs',
-  totalScore: number,
-  roundResults: RoundResult[],
-  isWinner: boolean,
-  teamMembers?: TeamMember[]
-): Promise<GameServiceResponse<{ session: any; pointsEarned: number; user: User }>> {
-  try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'saveGameSession',
-        data: {
-          userId,
-          gameMode,
-          totalScore,
-          roundResults,
-          isWinner,
-          teamMembers
-        }
-      }
-    });
-
-    if (error) throw error;
-    if (data.error) throw new Error(data.error);
-
-    return { data };
-  } catch (error: any) {
-    console.error('Save game session error:', error);
-    try {
-      const queue = JSON.parse(localStorage.getItem('finalexam_pending_sessions') || '[]');
-      queue.push({ userId, gameMode, totalScore, roundResults, isWinner, teamMembers, timestamp: Date.now() });
-      localStorage.setItem('finalexam_pending_sessions', JSON.stringify(queue));
-    } catch {}
-    return { error: error.message || 'Failed to save game session' };
   }
 }
 
@@ -100,12 +72,7 @@ export async function getLeaderboard(
   limit: number = 100
 ): Promise<GameServiceResponse<LeaderboardEntry[]>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'getLeaderboard',
-        data: { period, limit }
-      }
-    });
+    const { data, error } = await invokeApi('getLeaderboard', { period, limit });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -117,17 +84,44 @@ export async function getLeaderboard(
   }
 }
 
-// Get user stats
-export async function getUserStats(
-  userId: string
-): Promise<GameServiceResponse<{ user: User; bestScore: number; recentGames: any[] }>> {
+// ─── Authenticated endpoints ───────────────────────────────────────────────
+
+// Save game session and update leaderboard
+export async function saveGameSession(
+  gameMode: 'solo' | 'vs',
+  totalScore: number,
+  roundResults: RoundResult[],
+  isWinner: boolean,
+  teamMembers?: TeamMember[]
+): Promise<GameServiceResponse<{ session: any; pointsEarned: number; user: User }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'getUserStats',
-        data: { userId }
-      }
+    const { data, error } = await invokeApi('saveGameSession', {
+      gameMode,
+      totalScore,
+      roundResults,
+      isWinner,
+      teamMembers
     });
+
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+
+    return { data };
+  } catch (error: any) {
+    console.error('Save game session error:', error);
+    try {
+      const queue = JSON.parse(localStorage.getItem('finalexam_pending_sessions') || '[]');
+      queue.push({ gameMode, totalScore, roundResults, isWinner, teamMembers, timestamp: Date.now() });
+      localStorage.setItem('finalexam_pending_sessions', JSON.stringify(queue));
+    } catch {}
+    return { error: error.message || 'Failed to save game session' };
+  }
+}
+
+// Get user stats
+export async function getUserStats(): Promise<GameServiceResponse<{ user: User; bestScore: number; recentGames: any[] }>> {
+  try {
+    const { data, error } = await invokeApi('getUserStats');
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -141,18 +135,12 @@ export async function getUserStats(
 
 // Redeem prize
 export async function redeemPrize(
-  userId: string,
   prizeId: string,
   prizeName: string,
   pointsCost: number
 ): Promise<GameServiceResponse<User>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'redeemPrize',
-        data: { userId, prizeId, prizeName, pointsCost }
-      }
-    });
+    const { data, error } = await invokeApi('redeemPrize', { prizeId, prizeName, pointsCost });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -166,19 +154,13 @@ export async function redeemPrize(
 
 // Save practice progress
 export async function savePracticeProgress(
-  userId: string,
   subject: string,
   questionsAnswered: number,
   correctAnswers: number,
   timeSpent: number
 ): Promise<GameServiceResponse<{ success: boolean }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'savePracticeProgress',
-        data: { userId, subject, questionsAnswered, correctAnswers, timeSpent }
-      }
-    });
+    const { data, error } = await invokeApi('savePracticeProgress', { subject, questionsAnswered, correctAnswers, timeSpent });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -191,16 +173,9 @@ export async function savePracticeProgress(
 }
 
 // Get practice stats
-export async function getPracticeStats(
-  userId: string
-): Promise<GameServiceResponse<{ progress: any[]; subjectStats: Record<string, any> }>> {
+export async function getPracticeStats(): Promise<GameServiceResponse<{ progress: any[]; subjectStats: Record<string, any> }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: {
-        action: 'getPracticeStats',
-        data: { userId }
-      }
-    });
+    const { data, error } = await invokeApi('getPracticeStats');
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -214,14 +189,11 @@ export async function getPracticeStats(
 
 // Save a team
 export async function saveTeam(
-  userId: string,
   teamName: string,
   members: TeamMember[]
 ): Promise<GameServiceResponse<SavedTeam>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'saveTeam', data: { userId, teamName, members } }
-    });
+    const { data, error } = await invokeApi('saveTeam', { teamName, members });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.team };
@@ -231,13 +203,9 @@ export async function saveTeam(
 }
 
 // Get user's saved teams
-export async function getTeams(
-  userId: string
-): Promise<GameServiceResponse<SavedTeam[]>> {
+export async function getTeams(): Promise<GameServiceResponse<SavedTeam[]>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'getTeams', data: { userId } }
-    });
+    const { data, error } = await invokeApi('getTeams');
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.teams };
@@ -253,9 +221,7 @@ export async function updateTeam(
   members?: TeamMember[]
 ): Promise<GameServiceResponse<SavedTeam>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'updateTeam', data: { teamId, teamName, members } }
-    });
+    const { data, error } = await invokeApi('updateTeam', { teamId, teamName, members });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.team };
@@ -269,9 +235,7 @@ export async function deleteTeam(
   teamId: string
 ): Promise<GameServiceResponse<{ success: boolean }>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'deleteTeam', data: { teamId } }
-    });
+    const { data, error } = await invokeApi('deleteTeam', { teamId });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: { success: true } };
@@ -281,13 +245,9 @@ export async function deleteTeam(
 }
 
 // Create a challenge
-export async function createChallenge(
-  challengerId: string
-): Promise<GameServiceResponse<Challenge>> {
+export async function createChallenge(): Promise<GameServiceResponse<Challenge>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'createChallenge', data: { challengerId } }
-    });
+    const { data, error } = await invokeApi('createChallenge');
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenge };
@@ -304,9 +264,7 @@ export async function submitChallengerScore(
   teamMembers: TeamMember[]
 ): Promise<GameServiceResponse<Challenge>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'submitChallengerScore', data: { challengeId, score, roundResults, teamMembers } }
-    });
+    const { data, error } = await invokeApi('submitChallengerScore', { challengeId, score, roundResults, teamMembers });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenge };
@@ -317,13 +275,10 @@ export async function submitChallengerScore(
 
 // Join a challenge by code
 export async function joinChallenge(
-  challengeCode: string,
-  opponentId: string
+  challengeCode: string
 ): Promise<GameServiceResponse<Challenge>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'joinChallenge', data: { challengeCode, opponentId } }
-    });
+    const { data, error } = await invokeApi('joinChallenge', { challengeCode });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenge };
@@ -340,9 +295,7 @@ export async function submitOpponentScore(
   teamMembers: TeamMember[]
 ): Promise<GameServiceResponse<Challenge>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'submitOpponentScore', data: { challengeId, score, roundResults, teamMembers } }
-    });
+    const { data, error } = await invokeApi('submitOpponentScore', { challengeId, score, roundResults, teamMembers });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenge };
@@ -352,13 +305,9 @@ export async function submitOpponentScore(
 }
 
 // Get user's challenges
-export async function getChallenges(
-  userId: string
-): Promise<GameServiceResponse<Challenge[]>> {
+export async function getChallenges(): Promise<GameServiceResponse<Challenge[]>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'getChallenges', data: { userId } }
-    });
+    const { data, error } = await invokeApi('getChallenges');
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenges };
@@ -373,9 +322,7 @@ export async function getChallenge(
   challengeCode?: string
 ): Promise<GameServiceResponse<Challenge>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'getChallenge', data: { challengeId, challengeCode } }
-    });
+    const { data, error } = await invokeApi('getChallenge', { challengeId, challengeCode });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.challenge };
@@ -386,14 +333,11 @@ export async function getChallenge(
 
 // Get game history (paginated)
 export async function getGameHistory(
-  userId: string,
   limit: number = 20,
   offset: number = 0
 ): Promise<GameServiceResponse<GameSessionRecord[]>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'getGameHistory', data: { userId, limit, offset } }
-    });
+    const { data, error } = await invokeApi('getGameHistory', { limit, offset });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.sessions };
@@ -404,13 +348,10 @@ export async function getGameHistory(
 
 // Update user profile (avatar)
 export async function updateProfile(
-  userId: string,
   avatar: string
 ): Promise<GameServiceResponse<User>> {
   try {
-    const { data, error } = await supabase.functions.invoke('game-api', {
-      body: { action: 'updateProfile', data: { userId, avatar } }
-    });
+    const { data, error } = await invokeApi('updateProfile', { avatar });
     if (error) throw error;
     if (data.error) throw new Error(data.error);
     return { data: data.user };

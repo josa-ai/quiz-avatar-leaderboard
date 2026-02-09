@@ -22,7 +22,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ user, onBack, onViewChallenge
 
   const loadHistory = async (loadOffset = 0) => {
     setLoading(true);
-    const result = await getGameHistory(user.id, PAGE_SIZE, loadOffset);
+    const result = await getGameHistory(PAGE_SIZE, loadOffset);
     if (result.data) {
       if (loadOffset === 0) {
         setSessions(result.data);

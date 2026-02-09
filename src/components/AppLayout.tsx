@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { User, TeamMember, Prize, RoundResult, Challenge } from '@/types/game';
-import { saveGameSession, subscribeToUserUpdates, createChallenge, submitChallengerScore, submitOpponentScore, getChallenge } from '@/lib/gameService';
+import { saveGameSession, subscribeToUserUpdates, createChallenge, submitChallengerScore, submitOpponentScore, getChallenge, setAuthToken } from '@/lib/gameService';
 import SplashScreen from './game/SplashScreen';
 import LoginPage from './game/LoginPage';
 import RegisterPage from './game/RegisterPage';
@@ -57,6 +57,14 @@ const AppLayout: React.FC = () => {
     } catch {}
     return null;
   });
+  // Restore auth token from localStorage on init
+  useState(() => {
+    try {
+      const token = localStorage.getItem('finalexam_token');
+      if (token) setAuthToken(token);
+    } catch {}
+  });
+
   const [gameMode, setGameMode] = useState<'solo' | 'vs'>('solo');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
@@ -85,24 +93,36 @@ const AppLayout: React.FC = () => {
   }, []);
 
   // Login
-  const handleLogin = useCallback((loggedInUser: User) => {
+  const handleLogin = useCallback((loggedInUser: User, token?: string) => {
     setUser(loggedInUser);
     setCurrentScreen('home');
     try { localStorage.setItem('finalexam_user', JSON.stringify(loggedInUser)); } catch {}
+    if (token) {
+      setAuthToken(token);
+      try { localStorage.setItem('finalexam_token', token); } catch {}
+    }
   }, []);
 
   // Register
-  const handleRegister = useCallback((newUser: User) => {
+  const handleRegister = useCallback((newUser: User, token?: string) => {
     setUser(newUser);
     setCurrentScreen('home');
     try { localStorage.setItem('finalexam_user', JSON.stringify(newUser)); } catch {}
+    if (token) {
+      setAuthToken(token);
+      try { localStorage.setItem('finalexam_token', token); } catch {}
+    }
   }, []);
 
   // Logout
   const handleLogout = useCallback(() => {
     setUser(null);
     setCurrentScreen('login');
-    try { localStorage.removeItem('finalexam_user'); } catch {}
+    setAuthToken(null);
+    try {
+      localStorage.removeItem('finalexam_user');
+      localStorage.removeItem('finalexam_token');
+    } catch {}
   }, []);
 
   // Start game
@@ -174,7 +194,6 @@ const AppLayout: React.FC = () => {
       setIsSavingGame(true);
       try {
         const result = await saveGameSession(
-          user.id,
           gameMode,
           finalScore,
           finalResults,
@@ -263,7 +282,7 @@ const AppLayout: React.FC = () => {
   // Challenge: create
   const handleCreateChallenge = useCallback(async () => {
     if (!user || user.id.startsWith('demo-')) return;
-    const result = await createChallenge(user.id);
+    const result = await createChallenge();
     if (result.data) {
       setActiveChallengeId(result.data.id);
       setChallengeQuestionSeed(result.data.question_seed);

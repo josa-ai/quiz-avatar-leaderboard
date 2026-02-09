@@ -7,6 +7,7 @@ export interface User {
   rank: number;
   gamesPlayed: number;
   wins: number;
+  token?: string;
 }
 
 export interface Question {

@@ -25,7 +25,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack, onUserUpdate 
   const handleAvatarSelect = async (avatarUrl: string) => {
     if (user.id.startsWith('demo-')) return;
     setSavingAvatar(true);
-    const result = await updateProfile(user.id, avatarUrl);
+    const result = await updateProfile(avatarUrl);
     if (result.data) {
       onUserUpdate(result.data);
     }

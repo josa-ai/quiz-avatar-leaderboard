@@ -21,7 +21,7 @@ const ChallengeListPage: React.FC<ChallengeListPageProps> = ({ user, onViewChall
 
   const loadChallenges = async () => {
     setLoading(true);
-    const result = await getChallenges(user.id);
+    const result = await getChallenges();
     if (result.data) {
       setChallenges(result.data);
     }

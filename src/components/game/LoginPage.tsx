@@ -3,7 +3,7 @@ import { User } from '@/types/game';
 import { loginUser } from '@/lib/gameService';
 
 interface LoginPageProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: User, token?: string) => void;
   onRegister: () => void;
 }
 
@@ -30,7 +30,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
       if (result.error) {
         setError(result.error);
       } else if (result.data) {
-        onLogin(result.data);
+        onLogin(result.data.user, result.data.token);
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -49,7 +49,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
     try {
       // Try to login with demo account
       let result = await loginUser('demo@finalexam.com', 'demo123');
-      
+
       if (result.error && result.error.includes('Invalid')) {
         // Demo account doesn't exist, create a mock user for demo
         const mockUser: User = {
@@ -65,9 +65,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
         onLogin(mockUser);
         return;
       }
-      
+
       if (result.data) {
-        onLogin(result.data);
+        onLogin(result.data.user, result.data.token);
       }
     } catch (err) {
       // Fallback to mock user for demo
