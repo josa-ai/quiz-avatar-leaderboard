@@ -42,8 +42,9 @@ const AIHost: React.FC<AIHostProps> = ({
     
     const interval = setInterval(() => {
       if (index < text.length) {
-        setCurrentMessage(prev => prev + text[index]);
+        const char = text[index];
         index++;
+        setCurrentMessage(prev => prev + char);
       } else {
         clearInterval(interval);
         setIsTyping(false);
