@@ -1,6 +1,8 @@
 import { Question, Prize, LeaderboardEntry, EscapeRoom, BoardSquare } from '@/types/game';
+import { fisherYatesShuffle } from '@/lib/shuffle';
 
 export const trueFalseQuestions: Question[] = [
+  // === EXISTING 30 QUESTIONS (IDs 1-30) ===
   { id: 1, question: "The Pythagorean theorem applies only to right triangles.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
   { id: 2, question: "Shakespeare wrote 'Pride and Prejudice'.", answer: false, category: 'reading', difficulty: 'easy', points: 100 },
   { id: 3, question: "The mitochondria is known as the powerhouse of the cell.", answer: true, category: 'science', difficulty: 'easy', points: 100 },
@@ -31,6 +33,97 @@ export const trueFalseQuestions: Question[] = [
   { id: 28, question: "The Cold War involved direct military combat between the US and USSR.", answer: false, category: 'history', difficulty: 'medium', points: 150 },
   { id: 29, question: "Alliteration is the repetition of consonant sounds.", answer: true, category: 'language', difficulty: 'medium', points: 150 },
   { id: 30, question: "The Odyssey was written by Homer.", answer: true, category: 'reading', difficulty: 'medium', points: 150 },
+
+  // === NEW QUESTIONS (IDs 31-105) ===
+
+  // MATH (31-42)
+  { id: 31, question: "A prime number has exactly two distinct factors.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 32, question: "The number 1 is a prime number.", answer: false, category: 'math', difficulty: 'medium', points: 150 },
+  { id: 33, question: "The area of a circle is calculated using pi times the radius squared.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 34, question: "A parallelogram has exactly one pair of parallel sides.", answer: false, category: 'math', difficulty: 'medium', points: 150 },
+  { id: 35, question: "The product of any number and zero is zero.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 36, question: "An isosceles triangle has all three sides equal.", answer: false, category: 'math', difficulty: 'medium', points: 150 },
+  { id: 37, question: "The greatest common factor of 12 and 18 is 6.", answer: true, category: 'math', difficulty: 'medium', points: 150 },
+  { id: 38, question: "A cube has 8 faces.", answer: false, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 39, question: "The square root of 169 is 13.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 40, question: "In the order of operations, multiplication comes before exponents.", answer: false, category: 'math', difficulty: 'medium', points: 150 },
+  { id: 41, question: "The Fibonacci sequence starts with 0 and 1.", answer: true, category: 'math', difficulty: 'hard', points: 200 },
+  { id: 42, question: "Every even number greater than 2 can be expressed as the sum of two prime numbers according to the Goldbach conjecture.", answer: true, category: 'math', difficulty: 'hard', points: 200 },
+
+  // READING (43-54)
+  { id: 43, question: "The Hunger Games trilogy was written by Suzanne Collins.", answer: true, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 44, question: "Frankenstein was written by Mary Shelley.", answer: true, category: 'reading', difficulty: 'medium', points: 150 },
+  { id: 45, question: "The setting of a story refers to when and where it takes place.", answer: true, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 46, question: "A haiku is a poem with three lines of 5, 7, and 5 syllables.", answer: true, category: 'reading', difficulty: 'medium', points: 150 },
+  { id: 47, question: "Lord of the Flies was written by J.R.R. Tolkien.", answer: false, category: 'reading', difficulty: 'medium', points: 150 },
+  { id: 48, question: "An autobiography is a biography written by someone else.", answer: false, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 49, question: "The Diary of a Young Girl was written by Anne Frank.", answer: true, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 50, question: "Foreshadowing is a literary device that hints at events to come.", answer: true, category: 'reading', difficulty: 'medium', points: 150 },
+  { id: 51, question: "Animal Farm by George Orwell is an allegory.", answer: true, category: 'reading', difficulty: 'hard', points: 200 },
+  { id: 52, question: "A sonnet traditionally has 16 lines.", answer: false, category: 'reading', difficulty: 'hard', points: 200 },
+  { id: 53, question: "The Adventures of Tom Sawyer was written by Mark Twain.", answer: true, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 54, question: "Irony is when the opposite of what is expected occurs.", answer: true, category: 'reading', difficulty: 'medium', points: 150 },
+
+  // WRITING (55-66)
+  { id: 55, question: "A thesis statement typically appears at the end of an introduction paragraph.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 56, question: "A comma splice occurs when two independent clauses are joined by a comma alone.", answer: true, category: 'writing', difficulty: 'medium', points: 150 },
+  { id: 57, question: "The Oxford comma is placed before 'and' in a list of three or more items.", answer: true, category: 'writing', difficulty: 'medium', points: 150 },
+  { id: 58, question: "In MLA format, the default font size is 14 point.", answer: false, category: 'writing', difficulty: 'medium', points: 150 },
+  { id: 59, question: "A run-on sentence contains two or more independent clauses without proper punctuation.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 60, question: "Active voice is generally preferred over passive voice in academic writing.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 61, question: "A semicolon can be used to join two related independent clauses.", answer: true, category: 'writing', difficulty: 'medium', points: 150 },
+  { id: 62, question: "An essay outline is written after the first draft.", answer: false, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 63, question: "Plagiarism only applies to copying entire paragraphs, not individual sentences.", answer: false, category: 'writing', difficulty: 'medium', points: 150 },
+  { id: 64, question: "A topic sentence usually comes at the beginning of a body paragraph.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 65, question: "The three main parts of an essay are introduction, body, and conclusion.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
+  { id: 66, question: "An ellipsis consists of four dots.", answer: false, category: 'writing', difficulty: 'hard', points: 200 },
+
+  // SCIENCE (67-78)
+  { id: 67, question: "The chemical symbol for gold is Au.", answer: true, category: 'science', difficulty: 'easy', points: 100 },
+  { id: 68, question: "Jupiter is the largest planet in our solar system.", answer: true, category: 'science', difficulty: 'easy', points: 100 },
+  { id: 69, question: "Humans have 46 chromosomes in each cell.", answer: true, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 70, question: "The pH of pure water is 5.", answer: false, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 71, question: "Diamonds are made of carbon.", answer: true, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 72, question: "Light from the Sun takes approximately 8 minutes to reach Earth.", answer: true, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 73, question: "Atoms are the smallest possible particles of matter.", answer: false, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 74, question: "The Earth's core is primarily made of iron and nickel.", answer: true, category: 'science', difficulty: 'hard', points: 200 },
+  { id: 75, question: "Venus is the hottest planet in our solar system.", answer: true, category: 'science', difficulty: 'medium', points: 150 },
+  { id: 76, question: "Helium is the most abundant element in the universe.", answer: false, category: 'science', difficulty: 'hard', points: 200 },
+  { id: 77, question: "An acid has a pH less than 7.", answer: true, category: 'science', difficulty: 'easy', points: 100 },
+  { id: 78, question: "Newton's first law of motion is also known as the law of inertia.", answer: true, category: 'science', difficulty: 'medium', points: 150 },
+
+  // HISTORY (79-90)
+  { id: 79, question: "The Titanic sank in 1912.", answer: true, category: 'history', difficulty: 'easy', points: 100 },
+  { id: 80, question: "The ancient Egyptians built the Parthenon.", answer: false, category: 'history', difficulty: 'medium', points: 150 },
+  { id: 81, question: "Abraham Lincoln was the 16th President of the United States.", answer: true, category: 'history', difficulty: 'easy', points: 100 },
+  { id: 82, question: "The Roman Empire fell in 476 AD.", answer: true, category: 'history', difficulty: 'medium', points: 150 },
+  { id: 83, question: "The Magna Carta was signed in 1215.", answer: true, category: 'history', difficulty: 'medium', points: 150 },
+  { id: 84, question: "The first moon landing occurred in 1972.", answer: false, category: 'history', difficulty: 'easy', points: 100 },
+  { id: 85, question: "Cleopatra was Greek, not Egyptian.", answer: true, category: 'history', difficulty: 'hard', points: 200 },
+  { id: 86, question: "The Emancipation Proclamation was issued by Thomas Jefferson.", answer: false, category: 'history', difficulty: 'medium', points: 150 },
+  { id: 87, question: "The Industrial Revolution began in Great Britain.", answer: true, category: 'history', difficulty: 'easy', points: 100 },
+  { id: 88, question: "Pearl Harbor was attacked on December 7, 1941.", answer: true, category: 'history', difficulty: 'medium', points: 150 },
+  { id: 89, question: "The Ottoman Empire lasted for over 600 years.", answer: true, category: 'history', difficulty: 'hard', points: 200 },
+  { id: 90, question: "The Aztec Empire was located in present-day Peru.", answer: false, category: 'history', difficulty: 'medium', points: 150 },
+
+  // LANGUAGE (91-102)
+  { id: 91, question: "A conjunction connects words, phrases, or clauses.", answer: true, category: 'language', difficulty: 'easy', points: 100 },
+  { id: 92, question: "The word 'their' is a possessive pronoun.", answer: true, category: 'language', difficulty: 'easy', points: 100 },
+  { id: 93, question: "A preposition shows the relationship between a noun and another word in the sentence.", answer: true, category: 'language', difficulty: 'medium', points: 150 },
+  { id: 94, question: "An interjection is a word that expresses strong emotion.", answer: true, category: 'language', difficulty: 'easy', points: 100 },
+  { id: 95, question: "The prefix 'un-' means 'again'.", answer: false, category: 'language', difficulty: 'easy', points: 100 },
+  { id: 96, question: "Onomatopoeia is a word that imitates a natural sound.", answer: true, category: 'language', difficulty: 'medium', points: 150 },
+  { id: 97, question: "A compound sentence contains only one independent clause.", answer: false, category: 'language', difficulty: 'medium', points: 150 },
+  { id: 98, question: "The suffix '-tion' typically turns a verb into a noun.", answer: true, category: 'language', difficulty: 'medium', points: 150 },
+  { id: 99, question: "A palindrome reads the same forwards and backwards.", answer: true, category: 'language', difficulty: 'easy', points: 100 },
+  { id: 100, question: "Hyperbole is a figure of speech that uses extreme exaggeration.", answer: true, category: 'language', difficulty: 'medium', points: 150 },
+  { id: 101, question: "The subjunctive mood is used for statements of fact.", answer: false, category: 'language', difficulty: 'hard', points: 200 },
+  { id: 102, question: "A dangling modifier is a grammatical error where a modifier does not clearly refer to the word it modifies.", answer: true, category: 'language', difficulty: 'hard', points: 200 },
+
+  // EXTRA MIXED (103-105) to push over 100
+  { id: 103, question: "The perimeter of a rectangle is calculated by adding all four sides.", answer: true, category: 'math', difficulty: 'easy', points: 100 },
+  { id: 104, question: "Charles Dickens wrote 'A Tale of Two Cities'.", answer: true, category: 'reading', difficulty: 'easy', points: 100 },
+  { id: 105, question: "Transition words help connect ideas between sentences and paragraphs.", answer: true, category: 'writing', difficulty: 'easy', points: 100 },
 ];
 
 export const escapeRooms: EscapeRoom[] = [
@@ -72,13 +165,39 @@ export const escapeRooms: EscapeRoom[] = [
     ],
     isUnlocked: false,
     isCompleted: false
+  },
+  {
+    id: 4,
+    name: "The Principal's Office",
+    equations: [
+      { equation: "A store sells pens for $3 each. If you buy 5 pens and pay with a $20 bill, how much change do you get? (answer in dollars)", answer: 5 },
+      { equation: "A train travels 60 mph for 2.5 hours. How many miles does it travel?", answer: 150 },
+      { equation: "If 3 workers can build a wall in 12 hours, how many hours would 6 workers take?", answer: 6 },
+      { equation: "A rectangle has a perimeter of 30 and a length of 10. What is the width?", answer: 5 },
+      { equation: "You score 80, 90, and 85 on three tests. What score do you need on the 4th test for an average of 88?", answer: 97 },
+    ],
+    isUnlocked: false,
+    isCompleted: false
+  },
+  {
+    id: 5,
+    name: "The Auditorium",
+    equations: [
+      { equation: "Solve: 5(2x - 3) = 3(x + 4) - 1", answer: 2 },
+      { equation: "If x² + 6x + 9 = 25, and x > 0, find x.", answer: 2 },
+      { equation: "Solve: (x/3) + (x/6) = 5", answer: 10 },
+      { equation: "If 2ⁿ = 64, what is n?", answer: 6 },
+      { equation: "Solve: 4(x - 1) + 2 = 3(x + 2)", answer: 8 },
+    ],
+    isUnlocked: false,
+    isCompleted: false
   }
 ];
 
 export const generateBoardSquares = (): BoardSquare[] => {
   const categories: ('history' | 'language' | 'science' | 'reading')[] = ['history', 'language', 'science', 'reading'];
   const squares: BoardSquare[] = [];
-  
+
   const categoryQuestions: Record<string, Question[]> = {
     history: [
       { id: 101, question: "In what year did World War II end?", answer: "1945", category: 'history', difficulty: 'easy', points: 100 },
@@ -87,6 +206,13 @@ export const generateBoardSquares = (): BoardSquare[] => {
       { id: 104, question: "Who discovered America in 1492?", answer: "Christopher Columbus", category: 'history', difficulty: 'easy', points: 100 },
       { id: 105, question: "The Berlin Wall fell in what year?", answer: "1989", category: 'history', difficulty: 'medium', points: 150 },
       { id: 106, question: "Who was the British Prime Minister during WWII?", answer: "Winston Churchill", category: 'history', difficulty: 'medium', points: 150 },
+      { id: 107, question: "What ancient civilization built the pyramids at Giza?", answer: "Egyptians", category: 'history', difficulty: 'easy', points: 100 },
+      { id: 108, question: "In what year did the Civil War begin?", answer: "1861", category: 'history', difficulty: 'medium', points: 150 },
+      { id: 109, question: "What empire was ruled by Genghis Khan?", answer: "Mongol Empire", category: 'history', difficulty: 'medium', points: 150 },
+      { id: 110, question: "What document begins with 'We the People'?", answer: "The Constitution", category: 'history', difficulty: 'easy', points: 100 },
+      { id: 111, question: "What country gifted the Statue of Liberty to the United States?", answer: "France", category: 'history', difficulty: 'easy', points: 100 },
+      { id: 112, question: "In what year did the Soviet Union dissolve?", answer: "1991", category: 'history', difficulty: 'hard', points: 200 },
+      { id: 113, question: "What was the name of the ship the Pilgrims sailed on to America?", answer: "Mayflower", category: 'history', difficulty: 'easy', points: 100 },
     ],
     language: [
       { id: 201, question: "What is the past tense of 'run'?", answer: "ran", category: 'language', difficulty: 'easy', points: 100 },
@@ -95,6 +221,13 @@ export const generateBoardSquares = (): BoardSquare[] => {
       { id: 204, question: "What punctuation ends an interrogative sentence?", answer: "question mark", category: 'language', difficulty: 'easy', points: 100 },
       { id: 205, question: "What is the plural of 'child'?", answer: "children", category: 'language', difficulty: 'easy', points: 100 },
       { id: 206, question: "What literary device gives human qualities to non-human things?", answer: "personification", category: 'language', difficulty: 'hard', points: 200 },
+      { id: 207, question: "What is the past tense of 'go'?", answer: "went", category: 'language', difficulty: 'easy', points: 100 },
+      { id: 208, question: "What type of noun names a specific person, place, or thing?", answer: "proper noun", category: 'language', difficulty: 'easy', points: 100 },
+      { id: 209, question: "What word connects clauses like 'and', 'but', or 'or'?", answer: "conjunction", category: 'language', difficulty: 'medium', points: 150 },
+      { id: 210, question: "What is the comparative form of 'good'?", answer: "better", category: 'language', difficulty: 'easy', points: 100 },
+      { id: 211, question: "What figure of speech uses extreme exaggeration?", answer: "hyperbole", category: 'language', difficulty: 'medium', points: 150 },
+      { id: 212, question: "What is the plural of 'goose'?", answer: "geese", category: 'language', difficulty: 'easy', points: 100 },
+      { id: 213, question: "What part of speech describes a noun?", answer: "adjective", category: 'language', difficulty: 'easy', points: 100 },
     ],
     science: [
       { id: 301, question: "What planet is known as the Red Planet?", answer: "Mars", category: 'science', difficulty: 'easy', points: 100 },
@@ -103,6 +236,13 @@ export const generateBoardSquares = (): BoardSquare[] => {
       { id: 304, question: "What gas do plants absorb from the atmosphere?", answer: "Carbon dioxide", category: 'science', difficulty: 'easy', points: 100 },
       { id: 305, question: "What is the largest organ in the human body?", answer: "Skin", category: 'science', difficulty: 'medium', points: 150 },
       { id: 306, question: "What is the speed of light in km/s (approximately)?", answer: "300000", category: 'science', difficulty: 'hard', points: 200 },
+      { id: 307, question: "What element does 'O' represent on the periodic table?", answer: "Oxygen", category: 'science', difficulty: 'easy', points: 100 },
+      { id: 308, question: "What force keeps us on the ground?", answer: "Gravity", category: 'science', difficulty: 'easy', points: 100 },
+      { id: 309, question: "What is the hardest natural substance on Earth?", answer: "Diamond", category: 'science', difficulty: 'medium', points: 150 },
+      { id: 310, question: "What is the boiling point of water in Fahrenheit?", answer: "212", category: 'science', difficulty: 'medium', points: 150 },
+      { id: 311, question: "What planet is closest to the Sun?", answer: "Mercury", category: 'science', difficulty: 'easy', points: 100 },
+      { id: 312, question: "What gas makes up most of Earth's atmosphere?", answer: "Nitrogen", category: 'science', difficulty: 'medium', points: 150 },
+      { id: 313, question: "What part of the cell contains genetic information?", answer: "Nucleus", category: 'science', difficulty: 'medium', points: 150 },
     ],
     reading: [
       { id: 401, question: "Who wrote 'Romeo and Juliet'?", answer: "Shakespeare", category: 'reading', difficulty: 'easy', points: 100 },
@@ -111,14 +251,27 @@ export const generateBoardSquares = (): BoardSquare[] => {
       { id: 404, question: "What is the turning point of a story called?", answer: "climax", category: 'reading', difficulty: 'medium', points: 150 },
       { id: 405, question: "Who wrote 'Harry Potter'?", answer: "J.K. Rowling", category: 'reading', difficulty: 'easy', points: 100 },
       { id: 406, question: "What narrative technique tells a story from 'I' perspective?", answer: "first person", category: 'reading', difficulty: 'medium', points: 150 },
+      { id: 407, question: "Who wrote 'Charlotte's Web'?", answer: "E.B. White", category: 'reading', difficulty: 'easy', points: 100 },
+      { id: 408, question: "What is the villain or opposing force in a story called?", answer: "antagonist", category: 'reading', difficulty: 'easy', points: 100 },
+      { id: 409, question: "Who wrote 'The Chronicles of Narnia'?", answer: "C.S. Lewis", category: 'reading', difficulty: 'medium', points: 150 },
+      { id: 410, question: "What is the sequence of events in a story called?", answer: "plot", category: 'reading', difficulty: 'easy', points: 100 },
+      { id: 411, question: "Who wrote 'Brave New World'?", answer: "Aldous Huxley", category: 'reading', difficulty: 'hard', points: 200 },
+      { id: 412, question: "What literary term describes a recurring theme or image?", answer: "motif", category: 'reading', difficulty: 'hard', points: 200 },
+      { id: 413, question: "What is the introduction of characters and setting at the start of a story called?", answer: "exposition", category: 'reading', difficulty: 'medium', points: 150 },
     ]
   };
-  
+
+  // Shuffle questions for each category before assigning to squares
+  const shuffledQuestions: Record<string, Question[]> = {};
+  for (const cat of categories) {
+    shuffledQuestions[cat] = fisherYatesShuffle(categoryQuestions[cat]);
+  }
+
   for (let i = 0; i < 25; i++) {
     const category = categories[i % 4];
     const isTrap = Math.random() < 0.16; // ~4 traps on the board
-    const questionIndex = Math.floor(i / 4) % categoryQuestions[category].length;
-    
+    const questionIndex = Math.floor(i / 4) % shuffledQuestions[category].length;
+
     squares.push({
       id: i,
       category,
@@ -126,10 +279,10 @@ export const generateBoardSquares = (): BoardSquare[] => {
       trapType: isTrap ? (Math.random() < 0.5 ? 'loseTurn' : 'losePoints') : undefined,
       pointsLoss: isTrap ? Math.floor(Math.random() * 3 + 1) * 50 : undefined,
       isRevealed: false,
-      question: categoryQuestions[category][questionIndex]
+      question: shuffledQuestions[category][questionIndex]
     });
   }
-  
+
   return squares;
 };
 

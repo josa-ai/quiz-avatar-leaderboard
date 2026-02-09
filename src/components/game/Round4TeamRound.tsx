@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TeamMember, Question } from '@/types/game';
 import { trueFalseQuestions, generateBoardSquares } from '@/data/gameData';
+import { fisherYatesShuffle } from '@/lib/shuffle';
 import AIHost from './AIHost';
 import Timer from './Timer';
 
@@ -14,7 +15,7 @@ const Round4TeamRound: React.FC<Round4Props> = ({ teamMembers, onComplete }) => 
     const boardSquares = generateBoardSquares();
     const boardQuestions = boardSquares.filter(s => s.question).map(s => s.question!);
     const allQuestions = [...trueFalseQuestions, ...boardQuestions];
-    return allQuestions.sort(() => Math.random() - 0.5).slice(0, 20);
+    return fisherYatesShuffle(allQuestions).slice(0, 20);
   });
   
   const [currentIndex, setCurrentIndex] = useState(0);

@@ -37,8 +37,20 @@ interface RoundResult {
 }
 
 const AppLayout: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<GameScreen>('splash');
-  const [user, setUser] = useState<User | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<GameScreen>(() => {
+    try {
+      const saved = localStorage.getItem('finalexam_user');
+      if (saved) return 'home' as GameScreen;
+    } catch {}
+    return 'splash' as GameScreen;
+  });
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('finalexam_user');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
   const [gameMode, setGameMode] = useState<'solo' | 'vs'>('solo');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
@@ -66,18 +78,21 @@ const AppLayout: React.FC = () => {
   const handleLogin = useCallback((loggedInUser: User) => {
     setUser(loggedInUser);
     setCurrentScreen('home');
+    try { localStorage.setItem('finalexam_user', JSON.stringify(loggedInUser)); } catch {}
   }, []);
 
   // Register
   const handleRegister = useCallback((newUser: User) => {
     setUser(newUser);
     setCurrentScreen('home');
+    try { localStorage.setItem('finalexam_user', JSON.stringify(newUser)); } catch {}
   }, []);
 
   // Logout
   const handleLogout = useCallback(() => {
     setUser(null);
     setCurrentScreen('login');
+    try { localStorage.removeItem('finalexam_user'); } catch {}
   }, []);
 
   // Start game

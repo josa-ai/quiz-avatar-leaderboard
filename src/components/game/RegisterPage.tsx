@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User } from '@/types/game';
 import { registerUser } from '@/lib/gameService';
+import { avatarPresets } from '@/data/avatarPresets';
 
 interface RegisterPageProps {
   onRegister: (user: User) => void;
@@ -18,12 +19,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onBack }) => {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const defaultAvatars = [
-    'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg',
-    'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg',
-    'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321811522_a9a123dd.png',
-    'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321872035_87a820c3.png',
-  ];
+  const defaultAvatars = avatarPresets.map(p => p.url);
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,14 +235,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onBack }) => {
               {/* Or choose default */}
               <div className="text-center">
                 <p className="text-slate-400 text-sm mb-4">Or choose a mascot avatar:</p>
-                <div className="flex justify-center gap-3">
+                <div className="grid grid-cols-5 gap-3 max-h-48 overflow-y-auto p-2">
                   {defaultAvatars.map((avatarUrl, index) => (
                     <button
                       key={index}
                       onClick={() => setAvatar(avatarUrl)}
-                      className={`w-16 h-16 rounded-full overflow-hidden border-3 transition-all duration-300 ${
-                        avatar === avatarUrl 
-                          ? 'border-cyan-400 scale-110 shadow-lg shadow-cyan-400/50' 
+                      className={`w-14 h-14 rounded-full overflow-hidden border-3 transition-all duration-300 ${
+                        avatar === avatarUrl
+                          ? 'border-cyan-400 scale-110 shadow-lg shadow-cyan-400/50'
                           : 'border-slate-600 hover:border-slate-400'
                       }`}
                     >

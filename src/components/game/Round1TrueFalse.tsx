@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Question } from '@/types/game';
 import { trueFalseQuestions } from '@/data/gameData';
+import { fisherYatesShuffle } from '@/lib/shuffle';
+import { useHostAudio } from '@/hooks/useHostAudio';
 import AIHost from './AIHost';
 import Timer from './Timer';
 
@@ -9,9 +11,10 @@ interface Round1Props {
 }
 
 const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete }) => {
-  const [questions] = useState<Question[]>(() => 
-    [...trueFalseQuestions].sort(() => Math.random() - 0.5).slice(0, 20)
+  const [questions] = useState<Question[]>(() =>
+    fisherYatesShuffle(trueFalseQuestions).slice(0, 20)
   );
+  const { play: playAudio } = useHostAudio();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: number; correct: boolean }[]>([]);
@@ -42,9 +45,13 @@ const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete }) => {
     if (isCorrect) {
       setScore(prev => prev + currentQuestion.points);
       setFeedback('correct');
+      const idx = Math.floor(Math.random() * 4);
+      playAudio('correct', idx);
       setHostMessage("CORRECT! Maybe you DO belong in my school!");
     } else {
       setFeedback('incorrect');
+      const idx = Math.floor(Math.random() * 4);
+      playAudio('incorrect', idx);
       setHostMessage("WRONG! Did you even open a textbook?");
     }
 
