@@ -46,14 +46,14 @@ const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete, onEndGame }) => {
     if (isCorrect) {
       setScore(prev => prev + currentQuestion.points);
       setFeedback('correct');
-      const idx = Math.floor(Math.random() * 4);
+      const idx = Math.floor(Math.random() * hostQuotes.correct.length);
       playAudio('correct', idx);
-      setHostMessage(hostQuotes.correct[Math.floor(Math.random() * hostQuotes.correct.length)]);
+      setHostMessage(hostQuotes.correct[idx]);
     } else {
       setFeedback('incorrect');
-      const idx = Math.floor(Math.random() * 4);
+      const idx = Math.floor(Math.random() * hostQuotes.incorrect.length);
       playAudio('incorrect', idx);
-      setHostMessage(hostQuotes.incorrect[Math.floor(Math.random() * hostQuotes.incorrect.length)]);
+      setHostMessage(hostQuotes.incorrect[idx]);
     }
 
     // Move to next question after feedback
