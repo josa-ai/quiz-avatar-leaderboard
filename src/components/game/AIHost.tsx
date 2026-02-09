@@ -31,7 +31,6 @@ const AIHost: React.FC<AIHostProps> = ({
       play(messageType as any, selectedIndex);
       typeMessage(randomQuote);
     }
-    return () => stop();
   }, [message, messageType]);
 
   const typeMessage = (text: string) => {

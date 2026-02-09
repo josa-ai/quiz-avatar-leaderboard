@@ -59,9 +59,5 @@ export function useHostAudio() {
     });
   }, [stop]);
 
-  useEffect(() => {
-    return () => stop();
-  }, [stop]);
-
   return { play, stop, isMuted, toggleMute };
 }
