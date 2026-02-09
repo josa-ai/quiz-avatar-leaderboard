@@ -424,11 +424,11 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ user, onBack, weakAreas = [
         {/* Flashcard */}
         {currentCard && (
           <div className="mb-6">
-            <div 
+            <div
               onClick={handleFlipCard}
-              className={`relative min-h-[300px] md:min-h-[350px] cursor-pointer perspective-1000`}
+              className={`relative cursor-pointer perspective-1000`}
             >
-              <div className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+              <div className={`relative min-h-[300px] md:min-h-[350px] transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
                 {/* Front of card */}
                 <div className={`absolute inset-0 bg-slate-800/90 backdrop-blur-xl rounded-3xl p-8 border ${info.borderColor} flex flex-col items-center justify-center backface-hidden ${isFlipped ? 'invisible' : ''}`}>
                   {/* Mastered badge */}
