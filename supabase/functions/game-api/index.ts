@@ -15,7 +15,7 @@ function getCorsHeaders(req: Request) {
   return {
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
+      "authorization, x-client-info, apikey, content-type, x-app-token",
   };
 }
 
@@ -269,10 +269,7 @@ Deno.serve(async (req) => {
     let authUserId: string | null = null;
 
     if (!publicActions.has(action)) {
-      const authHeader = req.headers.get("authorization") || "";
-      const token = authHeader.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : null;
+      const token = req.headers.get("x-app-token") || null;
       if (!token) {
         return respond({ error: "Authentication required" }, 401);
       }

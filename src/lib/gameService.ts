@@ -18,7 +18,7 @@ export function setAuthToken(token: string | null) {
 async function invokeApi(action: string, data: Record<string, unknown> = {}) {
   const headers: Record<string, string> = {};
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    headers['x-app-token'] = authToken;
   }
   return supabase.functions.invoke('game-api', {
     body: { action, data },
