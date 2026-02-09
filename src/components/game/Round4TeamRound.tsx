@@ -8,9 +8,10 @@ import Timer from './Timer';
 interface Round4Props {
   teamMembers: TeamMember[];
   onComplete: (score: number, correctAnswers: number) => void;
+  onEndGame: () => void;
 }
 
-const Round4TeamRound: React.FC<Round4Props> = ({ teamMembers, onComplete }) => {
+const Round4TeamRound: React.FC<Round4Props> = ({ teamMembers, onComplete, onEndGame }) => {
   const [questions] = useState<Question[]>(() => {
     const boardSquares = generateBoardSquares();
     const boardQuestions = boardSquares.filter(s => s.question).map(s => s.question!);
@@ -134,6 +135,12 @@ const Round4TeamRound: React.FC<Round4Props> = ({ teamMembers, onComplete }) => 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
+            <button
+              onClick={onEndGame}
+              className="text-slate-400 hover:text-red-400 transition-colors text-sm font-medium mb-1"
+            >
+              ✕ End Game
+            </button>
             <h1 className="text-2xl font-bold text-white">Final Round: Team Challenge</h1>
             <p className="text-slate-400">Question {currentIndex + 1} of {questions.length}</p>
           </div>

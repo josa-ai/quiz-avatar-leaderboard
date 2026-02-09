@@ -192,6 +192,14 @@ const AppLayout: React.FC = () => {
     setCurrentScreen(`round${nextRound}` as GameScreen);
   }, [transitionData.toRound]);
 
+  // End game (quit mid-play)
+  const handleEndGame = useCallback(() => {
+    setCurrentRound(1);
+    setTotalScore(0);
+    setRoundResults([]);
+    setCurrentScreen('home');
+  }, []);
+
   // Play again
   const handlePlayAgain = useCallback(() => {
     setCurrentRound(1);
@@ -255,24 +263,25 @@ const AppLayout: React.FC = () => {
         ) : null;
       
       case 'round1':
-        return <Round1TrueFalse onComplete={handleRound1Complete} />;
+        return <Round1TrueFalse onComplete={handleRound1Complete} onEndGame={handleEndGame} />;
       
       case 'round2':
-        return <Round2EscapeRoom onComplete={handleRound2Complete} />;
+        return <Round2EscapeRoom onComplete={handleRound2Complete} onEndGame={handleEndGame} />;
       
       case 'round3':
-        return <Round3GameBoard onComplete={handleRound3Complete} />;
+        return <Round3GameBoard onComplete={handleRound3Complete} onEndGame={handleEndGame} />;
       
       case 'round4':
-        return <Round4TeamRound teamMembers={teamMembers} onComplete={handleRound4Complete} />;
+        return <Round4TeamRound teamMembers={teamMembers} onComplete={handleRound4Complete} onEndGame={handleEndGame} />;
       
       case 'transition':
         return (
-          <RoundTransition 
+          <RoundTransition
             fromRound={transitionData.fromRound}
             toRound={transitionData.toRound}
             score={totalScore}
             onComplete={handleTransitionComplete}
+            onEndGame={handleEndGame}
           />
         );
       

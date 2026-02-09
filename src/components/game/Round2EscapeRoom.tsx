@@ -5,9 +5,10 @@ import Timer from './Timer';
 
 interface Round2Props {
   onComplete: (score: number, roomsCompleted: number) => void;
+  onEndGame: () => void;
 }
 
-const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete }) => {
+const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete, onEndGame }) => {
   const [rooms, setRooms] = useState(() => JSON.parse(JSON.stringify(initialRooms)));
   const [currentRoomIndex, setCurrentRoomIndex] = useState(0);
   const [currentEquationIndex, setCurrentEquationIndex] = useState(0);
@@ -134,6 +135,12 @@ const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete }) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
+            <button
+              onClick={onEndGame}
+              className="text-slate-400 hover:text-red-400 transition-colors text-sm font-medium mb-1"
+            >
+              ✕ End Game
+            </button>
             <h1 className="text-2xl font-bold text-white">Round 2: Escape Room</h1>
             <p className="text-cyan-400 font-semibold">{currentRoom.name}</p>
           </div>

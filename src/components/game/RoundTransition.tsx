@@ -6,13 +6,15 @@ interface RoundTransitionProps {
   toRound: number;
   score: number;
   onComplete: () => void;
+  onEndGame: () => void;
 }
 
-const RoundTransition: React.FC<RoundTransitionProps> = ({ 
-  fromRound, 
-  toRound, 
-  score, 
-  onComplete 
+const RoundTransition: React.FC<RoundTransitionProps> = ({
+  fromRound,
+  toRound,
+  score,
+  onComplete,
+  onEndGame
 }) => {
   const [stage, setStage] = useState<'summary' | 'next'>('summary');
 
@@ -37,7 +39,13 @@ const RoundTransition: React.FC<RoundTransitionProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative">
+      <button
+        onClick={onEndGame}
+        className="absolute top-4 right-4 text-slate-400 hover:text-red-400 transition-colors text-sm font-medium"
+      >
+        ✕ End Game
+      </button>
       <div className="text-center max-w-2xl">
         {stage === 'summary' ? (
           <>

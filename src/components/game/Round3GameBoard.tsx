@@ -6,9 +6,10 @@ import Timer from './Timer';
 
 interface Round3Props {
   onComplete: (score: number, squaresCleared: number) => void;
+  onEndGame: () => void;
 }
 
-const Round3GameBoard: React.FC<Round3Props> = ({ onComplete }) => {
+const Round3GameBoard: React.FC<Round3Props> = ({ onComplete, onEndGame }) => {
   const [squares, setSquares] = useState<BoardSquare[]>(() => generateBoardSquares());
   const [selectedSquare, setSelectedSquare] = useState<BoardSquare | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
@@ -151,6 +152,12 @@ const Round3GameBoard: React.FC<Round3Props> = ({ onComplete }) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
+            <button
+              onClick={onEndGame}
+              className="text-slate-400 hover:text-red-400 transition-colors text-sm font-medium mb-1"
+            >
+              ✕ End Game
+            </button>
             <h1 className="text-2xl font-bold text-white">Round 3: Category Board</h1>
             <p className="text-slate-400">Select a square to answer</p>
           </div>

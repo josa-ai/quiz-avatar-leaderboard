@@ -8,9 +8,10 @@ import Timer from './Timer';
 
 interface Round1Props {
   onComplete: (score: number, answers: { questionId: number; correct: boolean }[]) => void;
+  onEndGame: () => void;
 }
 
-const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete }) => {
+const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete, onEndGame }) => {
   const [questions] = useState<Question[]>(() =>
     fisherYatesShuffle(trueFalseQuestions).slice(0, 20)
   );
@@ -125,6 +126,12 @@ const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete }) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
+            <button
+              onClick={onEndGame}
+              className="text-slate-400 hover:text-red-400 transition-colors text-sm font-medium mb-1"
+            >
+              ✕ End Game
+            </button>
             <h1 className="text-2xl font-bold text-white">Round 1: True or False</h1>
             <p className="text-slate-400">Question {currentIndex + 1} of {questions.length}</p>
           </div>
