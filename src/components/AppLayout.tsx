@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { User, TeamMember, Prize } from '@/types/game';
-import { saveGameSession, subscribeToUserUpdates } from '@/lib/gameService';
+import { User, TeamMember, Prize, RoundResult, Challenge } from '@/types/game';
+import { saveGameSession, subscribeToUserUpdates, createChallenge, submitChallengerScore, submitOpponentScore, getChallenge } from '@/lib/gameService';
 import SplashScreen from './game/SplashScreen';
 import LoginPage from './game/LoginPage';
 import RegisterPage from './game/RegisterPage';
@@ -14,27 +14,33 @@ import ResultsPage from './game/ResultsPage';
 import LeaderboardPage from './game/LeaderboardPage';
 import RewardsPage from './game/RewardsPage';
 import PracticeMode from './game/PracticeMode';
+import HistoryPage from './game/HistoryPage';
+import SettingsPage from './game/SettingsPage';
+import ChallengeCreatePage from './game/ChallengeCreatePage';
+import ChallengeJoinPage from './game/ChallengeJoinPage';
+import ChallengeResultsPage from './game/ChallengeResultsPage';
+import ChallengeListPage from './game/ChallengeListPage';
 
-type GameScreen = 
-  | 'splash' 
-  | 'login' 
-  | 'register' 
-  | 'home' 
-  | 'round1' 
-  | 'round2' 
-  | 'round3' 
-  | 'round4' 
+type GameScreen =
+  | 'splash'
+  | 'login'
+  | 'register'
+  | 'home'
+  | 'round1'
+  | 'round2'
+  | 'round3'
+  | 'round4'
   | 'transition'
-  | 'results' 
-  | 'leaderboard' 
+  | 'results'
+  | 'leaderboard'
   | 'rewards'
-  | 'practice';
-
-interface RoundResult {
-  round: number;
-  score: number;
-  details: string;
-}
+  | 'practice'
+  | 'history'
+  | 'settings'
+  | 'challengeCreate'
+  | 'challengeJoin'
+  | 'challengeResults'
+  | 'challengeList';
 
 const AppLayout: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>(() => {
@@ -58,6 +64,10 @@ const AppLayout: React.FC = () => {
   const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
   const [transitionData, setTransitionData] = useState({ fromRound: 0, toRound: 0 });
   const [isSavingGame, setIsSavingGame] = useState(false);
+  const [activeChallengeId, setActiveChallengeId] = useState<string | null>(null);
+  const [challengeQuestionSeed, setChallengeQuestionSeed] = useState<number | undefined>(undefined);
+  const [challengeRole, setChallengeRole] = useState<'challenger' | 'opponent' | null>(null);
+  const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
 
   // Subscribe to real-time user updates when logged in
   useEffect(() => {
@@ -150,15 +160,15 @@ const AppLayout: React.FC = () => {
   // Round 4 complete - save game to database
   const handleRound4Complete = useCallback(async (score: number, correctAnswers: number) => {
     const finalScore = totalScore + score;
-    const finalResults = [...roundResults, { 
-      round: 4, 
-      score, 
-      details: `${correctAnswers} team answers correct` 
+    const finalResults: RoundResult[] = [...roundResults, {
+      round: 4,
+      score,
+      details: `${correctAnswers} team answers correct`
     }];
-    
+
     setTotalScore(finalScore);
     setRoundResults(finalResults);
-    
+
     // Save game session to database
     if (user && !user.id.startsWith('demo-')) {
       setIsSavingGame(true);
@@ -171,9 +181,20 @@ const AppLayout: React.FC = () => {
           finalScore >= 2000,
           teamMembers
         );
-        
+
         if (result.data?.user) {
           setUser(result.data.user);
+        }
+
+        // If this is a challenge game, submit the score
+        if (activeChallengeId && challengeRole) {
+          if (challengeRole === 'challenger') {
+            const chalResult = await submitChallengerScore(activeChallengeId, finalScore, finalResults, teamMembers);
+            if (chalResult.data) setCurrentChallenge(chalResult.data);
+          } else {
+            const oppResult = await submitOpponentScore(activeChallengeId, finalScore, finalResults, teamMembers);
+            if (oppResult.data) setCurrentChallenge(oppResult.data);
+          }
         }
       } catch (error) {
         console.error('Failed to save game session:', error);
@@ -181,9 +202,14 @@ const AppLayout: React.FC = () => {
         setIsSavingGame(false);
       }
     }
-    
-    setCurrentScreen('results');
-  }, [totalScore, roundResults, user, gameMode, teamMembers]);
+
+    // Navigate to challenge results if in a challenge, otherwise regular results
+    if (activeChallengeId) {
+      setCurrentScreen('challengeResults');
+    } else {
+      setCurrentScreen('results');
+    }
+  }, [totalScore, roundResults, user, gameMode, teamMembers, activeChallengeId, challengeRole]);
 
   // Transition complete
   const handleTransitionComplete = useCallback(() => {
@@ -218,8 +244,83 @@ const AppLayout: React.FC = () => {
     setCurrentScreen('rewards');
   }, []);
 
+  // View history
+  const handleViewHistory = useCallback(() => {
+    setCurrentScreen('history');
+  }, []);
+
+  // View settings
+  const handleViewSettings = useCallback(() => {
+    setCurrentScreen('settings');
+  }, []);
+
+  // Handle user update (from settings avatar change)
+  const handleUserUpdate = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+    try { localStorage.setItem('finalexam_user', JSON.stringify(updatedUser)); } catch {}
+  }, []);
+
+  // Challenge: create
+  const handleCreateChallenge = useCallback(async () => {
+    if (!user || user.id.startsWith('demo-')) return;
+    const result = await createChallenge(user.id);
+    if (result.data) {
+      setActiveChallengeId(result.data.id);
+      setChallengeQuestionSeed(result.data.question_seed);
+      setChallengeRole('challenger');
+      setCurrentChallenge(result.data);
+      setCurrentScreen('challengeCreate');
+    }
+  }, [user]);
+
+  // Challenge: join
+  const handleJoinChallenge = useCallback(() => {
+    setCurrentScreen('challengeJoin');
+  }, []);
+
+  // Challenge: after joining, start game
+  const handleChallengeJoined = useCallback((challenge: Challenge) => {
+    setActiveChallengeId(challenge.id);
+    setChallengeQuestionSeed(challenge.question_seed);
+    setChallengeRole('opponent');
+    setCurrentChallenge(challenge);
+  }, []);
+
+  // Challenge: start playing (from create page or after join)
+  const handleStartChallengeGame = useCallback((members: TeamMember[]) => {
+    setGameMode('vs');
+    setTeamMembers(members);
+    setCurrentRound(1);
+    setTotalScore(0);
+    setRoundResults([]);
+    setCurrentScreen('round1');
+  }, []);
+
+  // Challenge: view list
+  const handleViewChallenges = useCallback(() => {
+    setCurrentScreen('challengeList');
+  }, []);
+
+  // Challenge: view results for a specific challenge
+  const handleViewChallengeResults = useCallback(async (challengeId: string) => {
+    const result = await getChallenge(challengeId);
+    if (result.data) {
+      setCurrentChallenge(result.data);
+      setCurrentScreen('challengeResults');
+    }
+  }, []);
+
+  // Quick VS (existing behavior, no challenge tracking)
+  const handleQuickVs = useCallback(() => {
+    // Go straight to team setup like before
+  }, []);
+
   // Go home
   const handleGoHome = useCallback(() => {
+    setActiveChallengeId(null);
+    setChallengeQuestionSeed(undefined);
+    setChallengeRole(null);
+    setCurrentChallenge(null);
     setCurrentScreen('home');
   }, []);
 
@@ -252,27 +353,32 @@ const AppLayout: React.FC = () => {
       
       case 'home':
         return user ? (
-          <HomePage 
+          <HomePage
             user={user}
             onStartGame={handleStartGame}
             onViewLeaderboard={handleViewLeaderboard}
             onViewRewards={handleViewRewards}
             onViewPractice={handleViewPractice}
+            onViewHistory={handleViewHistory}
+            onViewSettings={handleViewSettings}
+            onCreateChallenge={handleCreateChallenge}
+            onJoinChallenge={handleJoinChallenge}
+            onViewChallenges={handleViewChallenges}
             onLogout={handleLogout}
           />
         ) : null;
       
       case 'round1':
-        return <Round1TrueFalse onComplete={handleRound1Complete} onEndGame={handleEndGame} />;
-      
+        return <Round1TrueFalse onComplete={handleRound1Complete} onEndGame={handleEndGame} questionSeed={challengeQuestionSeed} />;
+
       case 'round2':
-        return <Round2EscapeRoom onComplete={handleRound2Complete} onEndGame={handleEndGame} />;
-      
+        return <Round2EscapeRoom onComplete={handleRound2Complete} onEndGame={handleEndGame} questionSeed={challengeQuestionSeed} />;
+
       case 'round3':
-        return <Round3GameBoard onComplete={handleRound3Complete} onEndGame={handleEndGame} />;
-      
+        return <Round3GameBoard onComplete={handleRound3Complete} onEndGame={handleEndGame} questionSeed={challengeQuestionSeed} />;
+
       case 'round4':
-        return <Round4TeamRound teamMembers={teamMembers} onComplete={handleRound4Complete} onEndGame={handleEndGame} />;
+        return <Round4TeamRound teamMembers={teamMembers} onComplete={handleRound4Complete} onEndGame={handleEndGame} questionSeed={challengeQuestionSeed} />;
       
       case 'transition':
         return (
@@ -317,12 +423,68 @@ const AppLayout: React.FC = () => {
 
       case 'practice':
         return user ? (
-          <PracticeMode 
+          <PracticeMode
             user={user}
             onBack={handleGoHome}
           />
         ) : null;
-      
+
+      case 'history':
+        return user ? (
+          <HistoryPage
+            user={user}
+            onBack={handleGoHome}
+            onViewChallenge={handleViewChallengeResults}
+          />
+        ) : null;
+
+      case 'settings':
+        return user ? (
+          <SettingsPage
+            user={user}
+            onBack={handleGoHome}
+            onUserUpdate={handleUserUpdate}
+          />
+        ) : null;
+
+      case 'challengeCreate':
+        return user && currentChallenge ? (
+          <ChallengeCreatePage
+            challenge={currentChallenge}
+            onStartPlaying={handleStartChallengeGame}
+            onBack={handleGoHome}
+          />
+        ) : null;
+
+      case 'challengeJoin':
+        return user ? (
+          <ChallengeJoinPage
+            user={user}
+            onChallengeJoined={handleChallengeJoined}
+            onStartPlaying={handleStartChallengeGame}
+            onBack={handleGoHome}
+          />
+        ) : null;
+
+      case 'challengeResults':
+        return user && currentChallenge ? (
+          <ChallengeResultsPage
+            challenge={currentChallenge}
+            currentUserId={user.id}
+            onBack={handleGoHome}
+            onViewChallenges={handleViewChallenges}
+          />
+        ) : null;
+
+      case 'challengeList':
+        return user ? (
+          <ChallengeListPage
+            user={user}
+            onViewChallenge={handleViewChallengeResults}
+            onBack={handleGoHome}
+          />
+        ) : null;
+
       default:
         return null;
     }

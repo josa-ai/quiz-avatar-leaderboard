@@ -6,6 +6,7 @@ import Timer from './Timer';
 interface Round2Props {
   onComplete: (score: number, roomsCompleted: number) => void;
   onEndGame: () => void;
+  questionSeed?: number;
 }
 
 const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete, onEndGame }) => {

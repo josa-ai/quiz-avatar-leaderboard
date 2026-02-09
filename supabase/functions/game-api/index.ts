@@ -367,6 +367,274 @@ Deno.serve(async (req) => {
         return respond({ progress: records, subjectStats });
       }
 
+      // ─── SAVE TEAM ─────────────────────────────────────────────
+      case "saveTeam": {
+        const { userId, teamName, members } = data;
+        if (!userId || !teamName) {
+          return respond({ error: "userId and teamName are required" }, 400);
+        }
+
+        // Max 5 teams per user
+        const { data: existingTeams } = await supabase
+          .from("teams")
+          .select("id")
+          .eq("owner_id", userId);
+
+        if (existingTeams && existingTeams.length >= 5) {
+          return respond({ error: "Maximum 5 saved teams allowed" }, 400);
+        }
+
+        const { data: team, error: teamErr } = await supabase
+          .from("teams")
+          .insert({
+            owner_id: userId,
+            team_name: teamName,
+            members: members || [],
+          })
+          .select()
+          .single();
+
+        if (teamErr) return respond({ error: teamErr.message }, 500);
+        return respond({ team });
+      }
+
+      // ─── GET TEAMS ────────────────────────────────────────────
+      case "getTeams": {
+        const { userId } = data;
+        const { data: teams, error: teamsErr } = await supabase
+          .from("teams")
+          .select("*")
+          .eq("owner_id", userId)
+          .order("created_at", { ascending: false });
+
+        if (teamsErr) return respond({ error: teamsErr.message }, 500);
+        return respond({ teams: teams || [] });
+      }
+
+      // ─── UPDATE TEAM ──────────────────────────────────────────
+      case "updateTeam": {
+        const { teamId, teamName, members } = data;
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (teamName !== undefined) updates.team_name = teamName;
+        if (members !== undefined) updates.members = members;
+
+        const { data: team, error: updateErr } = await supabase
+          .from("teams")
+          .update(updates)
+          .eq("id", teamId)
+          .select()
+          .single();
+
+        if (updateErr) return respond({ error: updateErr.message }, 500);
+        return respond({ team });
+      }
+
+      // ─── DELETE TEAM ──────────────────────────────────────────
+      case "deleteTeam": {
+        const { teamId } = data;
+        const { error: deleteErr } = await supabase
+          .from("teams")
+          .delete()
+          .eq("id", teamId);
+
+        if (deleteErr) return respond({ error: deleteErr.message }, 500);
+        return respond({ success: true });
+      }
+
+      // ─── CREATE CHALLENGE ─────────────────────────────────────
+      case "createChallenge": {
+        const { challengerId } = data;
+        const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+        let code = "";
+        for (let i = 0; i < 6; i++) {
+          code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        const seed = Math.floor(Math.random() * 2147483647);
+
+        const { data: challenge, error: challengeErr } = await supabase
+          .from("challenges")
+          .insert({
+            challenge_code: code,
+            challenger_id: challengerId,
+            question_seed: seed,
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (challengeErr) return respond({ error: challengeErr.message }, 500);
+        return respond({ challenge });
+      }
+
+      // ─── SUBMIT CHALLENGER SCORE ──────────────────────────────
+      case "submitChallengerScore": {
+        const { challengeId, score: chalScore, roundResults: chalResults, teamMembers: chalMembers } = data;
+
+        const { data: challenge, error: chalErr } = await supabase
+          .from("challenges")
+          .update({
+            challenger_score: chalScore,
+            challenger_round_results: chalResults || [],
+            challenger_team_members: chalMembers || [],
+            status: "active",
+          })
+          .eq("id", challengeId)
+          .select()
+          .single();
+
+        if (chalErr) return respond({ error: chalErr.message }, 500);
+        return respond({ challenge });
+      }
+
+      // ─── JOIN CHALLENGE ───────────────────────────────────────
+      case "joinChallenge": {
+        const { challengeCode, opponentId } = data;
+
+        const { data: challenge, error: findErr } = await supabase
+          .from("challenges")
+          .select("*")
+          .eq("challenge_code", challengeCode.toUpperCase())
+          .single();
+
+        if (findErr || !challenge) {
+          return respond({ error: "Challenge not found" }, 404);
+        }
+
+        if (challenge.status === "completed") {
+          return respond({ error: "Challenge already completed" }, 400);
+        }
+
+        if (challenge.challenger_id === opponentId) {
+          return respond({ error: "Cannot join your own challenge" }, 400);
+        }
+
+        if (challenge.opponent_id && challenge.opponent_id !== opponentId) {
+          return respond({ error: "Challenge already has an opponent" }, 400);
+        }
+
+        const { data: updated, error: joinErr } = await supabase
+          .from("challenges")
+          .update({ opponent_id: opponentId })
+          .eq("id", challenge.id)
+          .select()
+          .single();
+
+        if (joinErr) return respond({ error: joinErr.message }, 500);
+        return respond({ challenge: updated });
+      }
+
+      // ─── SUBMIT OPPONENT SCORE ────────────────────────────────
+      case "submitOpponentScore": {
+        const { challengeId: oppChalId, score: oppScore, roundResults: oppResults, teamMembers: oppMembers } = data;
+
+        const { data: challenge, error: oppErr } = await supabase
+          .from("challenges")
+          .update({
+            opponent_score: oppScore,
+            opponent_round_results: oppResults || [],
+            opponent_team_members: oppMembers || [],
+            status: "completed",
+          })
+          .eq("id", oppChalId)
+          .select()
+          .single();
+
+        if (oppErr) return respond({ error: oppErr.message }, 500);
+        return respond({ challenge });
+      }
+
+      // ─── GET CHALLENGES ───────────────────────────────────────
+      case "getChallenges": {
+        const { userId: chalUserId } = data;
+
+        const { data: challenges, error: listErr } = await supabase
+          .from("challenges")
+          .select("*, challenger:users!challenges_challenger_id_fkey(username, avatar), opponent:users!challenges_opponent_id_fkey(username, avatar)")
+          .or(`challenger_id.eq.${chalUserId},opponent_id.eq.${chalUserId}`)
+          .order("created_at", { ascending: false });
+
+        if (listErr) return respond({ error: listErr.message }, 500);
+
+        const mapped = (challenges || []).map((c: Record<string, unknown>) => {
+          const challenger = c.challenger as Record<string, unknown> | null;
+          const opponent = c.opponent as Record<string, unknown> | null;
+          return {
+            ...c,
+            challenger_username: challenger?.username || "Unknown",
+            opponent_username: opponent?.username || null,
+            challenger: undefined,
+            opponent: undefined,
+          };
+        });
+
+        return respond({ challenges: mapped });
+      }
+
+      // ─── GET CHALLENGE ────────────────────────────────────────
+      case "getChallenge": {
+        const { challengeId: getChalId, challengeCode: getChalCode } = data;
+
+        let query = supabase
+          .from("challenges")
+          .select("*, challenger:users!challenges_challenger_id_fkey(username, avatar), opponent:users!challenges_opponent_id_fkey(username, avatar)");
+
+        if (getChalId) {
+          query = query.eq("id", getChalId);
+        } else if (getChalCode) {
+          query = query.eq("challenge_code", getChalCode.toUpperCase());
+        } else {
+          return respond({ error: "challengeId or challengeCode required" }, 400);
+        }
+
+        const { data: challenge, error: getErr } = await query.single();
+        if (getErr || !challenge) return respond({ error: "Challenge not found" }, 404);
+
+        const challenger = challenge.challenger as Record<string, unknown> | null;
+        const opponent = challenge.opponent as Record<string, unknown> | null;
+
+        return respond({
+          challenge: {
+            ...challenge,
+            challenger_username: challenger?.username || "Unknown",
+            opponent_username: opponent?.username || null,
+            challenger: undefined,
+            opponent: undefined,
+          },
+        });
+      }
+
+      // ─── GET GAME HISTORY ─────────────────────────────────────
+      case "getGameHistory": {
+        const { userId: histUserId, limit: histLimit = 20, offset: histOffset = 0 } = data;
+
+        const { data: sessions, error: histErr } = await supabase
+          .from("game_sessions")
+          .select("*")
+          .eq("user_id", histUserId)
+          .order("created_at", { ascending: false })
+          .range(histOffset, histOffset + histLimit - 1);
+
+        if (histErr) return respond({ error: histErr.message }, 500);
+        return respond({ sessions: sessions || [] });
+      }
+
+      // ─── UPDATE PROFILE ───────────────────────────────────────
+      case "updateProfile": {
+        const { userId: profUserId, avatar: newAvatar } = data;
+        const updates: Record<string, unknown> = {};
+        if (newAvatar !== undefined) updates.avatar = newAvatar;
+
+        const { data: userRow, error: profErr } = await supabase
+          .from("users")
+          .update(updates)
+          .eq("id", profUserId)
+          .select()
+          .single();
+
+        if (profErr) return respond({ error: profErr.message }, 500);
+        return respond({ user: mapUserRow(userRow) });
+      }
+
       default:
         return respond({ error: `Unknown action: ${action}` }, 400);
     }

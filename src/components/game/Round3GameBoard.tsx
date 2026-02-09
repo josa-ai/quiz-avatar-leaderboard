@@ -7,6 +7,7 @@ import Timer from './Timer';
 interface Round3Props {
   onComplete: (score: number, squaresCleared: number) => void;
   onEndGame: () => void;
+  questionSeed?: number;
 }
 
 const Round3GameBoard: React.FC<Round3Props> = ({ onComplete, onEndGame }) => {

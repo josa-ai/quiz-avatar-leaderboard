@@ -1,12 +1,6 @@
 import { supabase } from './supabase';
-import { User, TeamMember, LeaderboardEntry } from '@/types/game';
+import { User, TeamMember, LeaderboardEntry, RoundResult, SavedTeam, Challenge, GameSessionRecord } from '@/types/game';
 import { mockLeaderboard } from '@/data/gameData';
-
-interface RoundResult {
-  round: number;
-  score: number;
-  details: string;
-}
 
 interface GameServiceResponse<T> {
   data?: T;
@@ -215,6 +209,213 @@ export async function getPracticeStats(
   } catch (error: any) {
     console.error('Get practice stats error:', error);
     return { error: error.message || 'Failed to get practice stats' };
+  }
+}
+
+// Save a team
+export async function saveTeam(
+  userId: string,
+  teamName: string,
+  members: TeamMember[]
+): Promise<GameServiceResponse<SavedTeam>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'saveTeam', data: { userId, teamName, members } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.team };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to save team' };
+  }
+}
+
+// Get user's saved teams
+export async function getTeams(
+  userId: string
+): Promise<GameServiceResponse<SavedTeam[]>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'getTeams', data: { userId } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.teams };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to get teams' };
+  }
+}
+
+// Update a saved team
+export async function updateTeam(
+  teamId: string,
+  teamName?: string,
+  members?: TeamMember[]
+): Promise<GameServiceResponse<SavedTeam>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'updateTeam', data: { teamId, teamName, members } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.team };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to update team' };
+  }
+}
+
+// Delete a saved team
+export async function deleteTeam(
+  teamId: string
+): Promise<GameServiceResponse<{ success: boolean }>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'deleteTeam', data: { teamId } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: { success: true } };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to delete team' };
+  }
+}
+
+// Create a challenge
+export async function createChallenge(
+  challengerId: string
+): Promise<GameServiceResponse<Challenge>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'createChallenge', data: { challengerId } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenge };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to create challenge' };
+  }
+}
+
+// Submit challenger score
+export async function submitChallengerScore(
+  challengeId: string,
+  score: number,
+  roundResults: RoundResult[],
+  teamMembers: TeamMember[]
+): Promise<GameServiceResponse<Challenge>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'submitChallengerScore', data: { challengeId, score, roundResults, teamMembers } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenge };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to submit challenger score' };
+  }
+}
+
+// Join a challenge by code
+export async function joinChallenge(
+  challengeCode: string,
+  opponentId: string
+): Promise<GameServiceResponse<Challenge>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'joinChallenge', data: { challengeCode, opponentId } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenge };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to join challenge' };
+  }
+}
+
+// Submit opponent score
+export async function submitOpponentScore(
+  challengeId: string,
+  score: number,
+  roundResults: RoundResult[],
+  teamMembers: TeamMember[]
+): Promise<GameServiceResponse<Challenge>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'submitOpponentScore', data: { challengeId, score, roundResults, teamMembers } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenge };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to submit opponent score' };
+  }
+}
+
+// Get user's challenges
+export async function getChallenges(
+  userId: string
+): Promise<GameServiceResponse<Challenge[]>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'getChallenges', data: { userId } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenges };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to get challenges' };
+  }
+}
+
+// Get single challenge
+export async function getChallenge(
+  challengeId?: string,
+  challengeCode?: string
+): Promise<GameServiceResponse<Challenge>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'getChallenge', data: { challengeId, challengeCode } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.challenge };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to get challenge' };
+  }
+}
+
+// Get game history (paginated)
+export async function getGameHistory(
+  userId: string,
+  limit: number = 20,
+  offset: number = 0
+): Promise<GameServiceResponse<GameSessionRecord[]>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'getGameHistory', data: { userId, limit, offset } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.sessions };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to get game history' };
+  }
+}
+
+// Update user profile (avatar)
+export async function updateProfile(
+  userId: string,
+  avatar: string
+): Promise<GameServiceResponse<User>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('game-api', {
+      body: { action: 'updateProfile', data: { userId, avatar } }
+    });
+    if (error) throw error;
+    if (data.error) throw new Error(data.error);
+    return { data: data.user };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to update profile' };
   }
 }
 

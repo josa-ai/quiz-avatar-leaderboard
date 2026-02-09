@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Question } from '@/types/game';
 import { trueFalseQuestions, hostQuotes } from '@/data/gameData';
-import { fisherYatesShuffle } from '@/lib/shuffle';
+import { fisherYatesShuffle, seededShuffle } from '@/lib/shuffle';
 import { useHostAudio } from '@/hooks/useHostAudio';
 import AIHost from './AIHost';
 import Timer from './Timer';
@@ -9,11 +9,12 @@ import Timer from './Timer';
 interface Round1Props {
   onComplete: (score: number, answers: { questionId: number; correct: boolean }[]) => void;
   onEndGame: () => void;
+  questionSeed?: number;
 }
 
-const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete, onEndGame }) => {
+const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete, onEndGame, questionSeed }) => {
   const [questions] = useState<Question[]>(() =>
-    fisherYatesShuffle(trueFalseQuestions).slice(0, 20)
+    (questionSeed !== undefined ? seededShuffle(trueFalseQuestions, questionSeed) : fisherYatesShuffle(trueFalseQuestions)).slice(0, 20)
   );
   const { play: playAudio } = useHostAudio();
   const [currentIndex, setCurrentIndex] = useState(0);

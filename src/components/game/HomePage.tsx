@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { User, TeamMember } from '@/types/game';
+import React, { useState, useEffect } from 'react';
+import { User, TeamMember, SavedTeam } from '@/types/game';
+import { getTeams, saveTeam, deleteTeam } from '@/lib/gameService';
 import AIHost from './AIHost';
 
 interface HomePageProps {
@@ -8,24 +9,57 @@ interface HomePageProps {
   onViewLeaderboard: () => void;
   onViewRewards: () => void;
   onViewPractice: () => void;
+  onViewHistory: () => void;
+  onViewSettings: () => void;
+  onCreateChallenge: () => void;
+  onJoinChallenge: () => void;
+  onViewChallenges: () => void;
   onLogout: () => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ 
-  user, 
-  onStartGame, 
-  onViewLeaderboard, 
+const HomePage: React.FC<HomePageProps> = ({
+  user,
+  onStartGame,
+  onViewLeaderboard,
   onViewRewards,
   onViewPractice,
-  onLogout 
+  onViewHistory,
+  onViewSettings,
+  onCreateChallenge,
+  onJoinChallenge,
+  onViewChallenges,
+  onLogout
 }) => {
   const [selectedMode, setSelectedMode] = useState<'solo' | 'vs' | null>(null);
   const [showTeamSetup, setShowTeamSetup] = useState(false);
+  const [showVsChoice, setShowVsChoice] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newMemberName, setNewMemberName] = useState('');
+  const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([]);
+  const [saveTeamName, setSaveTeamName] = useState('');
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [savingTeam, setSavingTeam] = useState(false);
+
+  useEffect(() => {
+    if (!user.id.startsWith('demo-')) {
+      getTeams(user.id).then(result => {
+        if (result.data) setSavedTeams(result.data);
+      });
+    }
+  }, [user.id]);
 
   const handleModeSelect = (mode: 'solo' | 'vs') => {
-    setSelectedMode(mode);
+    if (mode === 'vs') {
+      setSelectedMode('vs');
+      setShowVsChoice(true);
+    } else {
+      setSelectedMode(mode);
+      setShowTeamSetup(true);
+    }
+  };
+
+  const handleQuickVs = () => {
+    setShowVsChoice(false);
     setShowTeamSetup(true);
   };
 
@@ -87,7 +121,81 @@ const HomePage: React.FC<HomePageProps> = ({
           <AIHost messageType="welcome" size="large" />
         </div>
 
-        {!showTeamSetup ? (
+        {showVsChoice ? (
+          /* VS Mode Sub-Choice */
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white mb-2">VS MODE</h2>
+              <p className="text-slate-400">Choose how you want to compete</p>
+            </div>
+            <div className="space-y-4">
+              <button
+                onClick={() => { setShowVsChoice(false); onCreateChallenge(); }}
+                className="w-full bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-purple-400/50 transition-all text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Create Challenge</h3>
+                    <p className="text-slate-400 text-sm">Generate a code and share it with a friend</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { setShowVsChoice(false); onJoinChallenge(); }}
+                className="w-full bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-cyan-400/50 transition-all text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Join Challenge</h3>
+                    <p className="text-slate-400 text-sm">Enter a challenge code to compete</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleQuickVs}
+                className="w-full bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-green-400/50 transition-all text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Quick VS</h3>
+                    <p className="text-slate-400 text-sm">Play locally without challenge tracking</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={onViewChallenges}
+                className="w-full bg-slate-800/60 backdrop-blur rounded-2xl p-4 border border-slate-700/50 hover:border-amber-400/50 transition-all text-center"
+              >
+                <span className="text-amber-400 font-semibold">View My Challenges</span>
+              </button>
+
+              <button
+                onClick={() => { setShowVsChoice(false); setSelectedMode(null); }}
+                className="w-full py-3 text-slate-400 hover:text-white transition-colors"
+              >
+                ← Back
+              </button>
+            </div>
+          </div>
+        ) : !showTeamSetup ? (
           <>
             {/* Title */}
             <div className="text-center mb-12">
@@ -180,7 +288,10 @@ const HomePage: React.FC<HomePageProps> = ({
                 </div>
               </button>
 
-              <button className="bg-slate-800/60 backdrop-blur rounded-2xl p-6 border border-slate-700/50 hover:border-blue-400/50 transition-all text-center group">
+              <button
+                onClick={onViewHistory}
+                className="bg-slate-800/60 backdrop-blur rounded-2xl p-6 border border-slate-700/50 hover:border-blue-400/50 transition-all text-center group"
+              >
                 <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -189,7 +300,10 @@ const HomePage: React.FC<HomePageProps> = ({
                 <span className="text-white font-semibold">History</span>
               </button>
 
-              <button className="bg-slate-800/60 backdrop-blur rounded-2xl p-6 border border-slate-700/50 hover:border-pink-400/50 transition-all text-center group">
+              <button
+                onClick={onViewSettings}
+                className="bg-slate-800/60 backdrop-blur rounded-2xl p-6 border border-slate-700/50 hover:border-pink-400/50 transition-all text-center group"
+              >
                 <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -249,6 +363,39 @@ const HomePage: React.FC<HomePageProps> = ({
               </h2>
               <p className="text-slate-400 mb-6">Add team members for Round 4 (optional, up to 10)</p>
 
+              {/* Saved Teams */}
+              {savedTeams.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-slate-400 text-sm mb-2">Load Saved Team ({savedTeams.length}/5)</p>
+                  <div className="space-y-2">
+                    {savedTeams.map((st) => (
+                      <div key={st.id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-3">
+                        <button
+                          onClick={() => setTeamMembers(st.members)}
+                          className="flex items-center gap-3 text-left flex-1"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                            <span className="text-cyan-400 text-sm font-bold">{st.members.length}</span>
+                          </div>
+                          <span className="text-white font-medium">{st.team_name}</span>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await deleteTeam(st.id);
+                            setSavedTeams(prev => prev.filter(t => t.id !== st.id));
+                          }}
+                          className="text-red-400 hover:text-red-300 transition-colors p-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Add member input */}
               <div className="flex gap-3 mb-6">
                 <input
@@ -293,6 +440,54 @@ const HomePage: React.FC<HomePageProps> = ({
                   ))
                 )}
               </div>
+
+              {/* Save Team */}
+              {teamMembers.length > 0 && !user.id.startsWith('demo-') && (
+                <div className="mb-4">
+                  {showSaveInput ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={saveTeamName}
+                        onChange={(e) => setSaveTeamName(e.target.value)}
+                        placeholder="Team name"
+                        className="flex-1 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl text-white text-sm placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!saveTeamName.trim()) return;
+                          setSavingTeam(true);
+                          const result = await saveTeam(user.id, saveTeamName.trim(), teamMembers);
+                          if (result.data) {
+                            setSavedTeams(prev => [result.data!, ...prev]);
+                          }
+                          setSavingTeam(false);
+                          setShowSaveInput(false);
+                          setSaveTeamName('');
+                        }}
+                        disabled={savingTeam || savedTeams.length >= 5}
+                        className="px-4 py-2 bg-cyan-500 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {savingTeam ? '...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => { setShowSaveInput(false); setSaveTeamName(''); }}
+                        className="px-3 py-2 text-slate-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowSaveInput(true)}
+                      disabled={savedTeams.length >= 5}
+                      className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savedTeams.length >= 5 ? 'Max 5 teams saved' : 'Save this team for later'}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Action buttons */}
               <div className="flex gap-4">
