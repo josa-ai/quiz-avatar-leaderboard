@@ -338,13 +338,25 @@ export const hostQuotes = {
     "CORRECT! Maybe you DO belong in my school!",
     "That's right! I'm almost impressed!",
     "Nailed it! Keep that energy!",
-    "Boom! Someone's been studying!"
+    "Boom! Someone's been studying!",
+    "Not bad! Maybe you're not hopeless after all!",
+    "Look at the big brain on YOU! Color me impressed!",
+    "A+ answer! Don't let it go to your head!",
+    "That's the kind of answer that earns EXTRA CREDIT!",
+    "Brilliant! See what happens when you actually study?",
+    "RIGHT! Now do it again!"
   ],
   incorrect: [
     "WRONG! Did you even open a textbook?",
     "Ouch! That's gonna cost you!",
     "Incorrect! My grandmother could've gotten that one!",
-    "Nope! Back to the books for you!"
+    "Nope! Back to the books for you!",
+    "Yikes! That answer hurt MY brain!",
+    "Were you even paying attention? I JUST taught this!",
+    "WRONG! I'm adding that to your permanent record!",
+    "That's a swing and a miss! Try harder!",
+    "Not even close! Did you guess with your eyes closed?",
+    "INCORRECT! I expected better from you!"
   ],
   timeUp: [
     "TIME'S UP! Pencils down, no exceptions!",

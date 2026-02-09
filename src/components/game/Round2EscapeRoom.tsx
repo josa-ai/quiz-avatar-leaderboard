@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { escapeRooms as initialRooms } from '@/data/gameData';
+import { escapeRooms as initialRooms, hostQuotes } from '@/data/gameData';
 import AIHost from './AIHost';
 import Timer from './Timer';
 
@@ -48,7 +48,7 @@ const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete, onEndGame }) => {
     if (isCorrect) {
       setScore(prev => prev + 200);
       setFeedback('correct');
-      setHostMessage("Excellent! That door just unlocked!");
+      setHostMessage(hostQuotes.correct[Math.floor(Math.random() * hostQuotes.correct.length)]);
 
       setTimeout(() => {
         setFeedback(null);
@@ -77,7 +77,7 @@ const Round2EscapeRoom: React.FC<Round2Props> = ({ onComplete, onEndGame }) => {
       }, 1500);
     } else {
       setFeedback('incorrect');
-      setHostMessage("Wrong! Try again, time is ticking!");
+      setHostMessage(hostQuotes.incorrect[Math.floor(Math.random() * hostQuotes.incorrect.length)]);
       setTimeout(() => {
         setFeedback(null);
         setHostMessage('');

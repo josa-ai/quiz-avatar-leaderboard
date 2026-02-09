@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Question } from '@/types/game';
-import { trueFalseQuestions } from '@/data/gameData';
+import { trueFalseQuestions, hostQuotes } from '@/data/gameData';
 import { fisherYatesShuffle } from '@/lib/shuffle';
 import { useHostAudio } from '@/hooks/useHostAudio';
 import AIHost from './AIHost';
@@ -48,12 +48,12 @@ const Round1TrueFalse: React.FC<Round1Props> = ({ onComplete, onEndGame }) => {
       setFeedback('correct');
       const idx = Math.floor(Math.random() * 4);
       playAudio('correct', idx);
-      setHostMessage("CORRECT! Maybe you DO belong in my school!");
+      setHostMessage(hostQuotes.correct[Math.floor(Math.random() * hostQuotes.correct.length)]);
     } else {
       setFeedback('incorrect');
       const idx = Math.floor(Math.random() * 4);
       playAudio('incorrect', idx);
-      setHostMessage("WRONG! Did you even open a textbook?");
+      setHostMessage(hostQuotes.incorrect[Math.floor(Math.random() * hostQuotes.incorrect.length)]);
     }
 
     // Move to next question after feedback

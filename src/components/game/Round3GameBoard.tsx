@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BoardSquare } from '@/types/game';
-import { generateBoardSquares } from '@/data/gameData';
+import { generateBoardSquares, hostQuotes } from '@/data/gameData';
 import AIHost from './AIHost';
 import Timer from './Timer';
 
@@ -79,7 +79,7 @@ const Round3GameBoard: React.FC<Round3Props> = ({ onComplete, onEndGame }) => {
     if (isCorrect) {
       setScore(prev => prev + (selectedSquare.question?.points || 100));
       setFeedback('correct');
-      setHostMessage("CORRECT! That's what I'm talking about!");
+      setHostMessage(hostQuotes.correct[Math.floor(Math.random() * hostQuotes.correct.length)]);
       setSquaresCleared(prev => prev + 1);
       
       const newSquares = squares.map(s => 

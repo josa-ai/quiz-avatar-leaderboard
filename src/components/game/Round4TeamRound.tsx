@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TeamMember, Question } from '@/types/game';
-import { trueFalseQuestions, generateBoardSquares } from '@/data/gameData';
+import { trueFalseQuestions, generateBoardSquares, hostQuotes } from '@/data/gameData';
 import { fisherYatesShuffle } from '@/lib/shuffle';
 import AIHost from './AIHost';
 import Timer from './Timer';
@@ -61,10 +61,10 @@ const Round4TeamRound: React.FC<Round4Props> = ({ teamMembers, onComplete, onEnd
       setScore(prev => prev + currentQuestion.points);
       setCorrectAnswers(prev => prev + 1);
       setFeedback('correct');
-      setHostMessage(`${currentMember?.name || 'Player'} nailed it! Great teamwork!`);
+      setHostMessage(hostQuotes.correct[Math.floor(Math.random() * hostQuotes.correct.length)]);
     } else {
       setFeedback('incorrect');
-      setHostMessage(`Oops! The answer was: ${currentQuestion.answer}`);
+      setHostMessage(`${hostQuotes.incorrect[Math.floor(Math.random() * hostQuotes.incorrect.length)]} The answer was: ${currentQuestion.answer}`);
     }
 
     setTimeout(() => {
