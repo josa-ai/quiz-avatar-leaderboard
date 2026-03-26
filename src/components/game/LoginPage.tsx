@@ -50,7 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
       // Try to login with demo account
       let result = await loginUser('demo@finalexam.com', 'demo123');
 
-      if (result.error && result.error.includes('Invalid')) {
+      if (result.error) {
         // Demo account doesn't exist, create a mock user for demo
         const mockUser: User = {
           id: 'demo-' + Date.now(),

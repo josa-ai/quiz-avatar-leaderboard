@@ -20,10 +20,23 @@ async function invokeApi(action: string, data: Record<string, unknown> = {}) {
   if (authToken) {
     headers['x-app-token'] = authToken;
   }
-  return supabase.functions.invoke('game-api', {
+  const { data: responseData, error } = await supabase.functions.invoke('game-api', {
     body: { action, data },
     headers,
   });
+
+  if (error) {
+    // Extract the actual error message from the edge function response
+    let message = error.message;
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) message = body.error;
+      }
+    } catch {}
+    return { data: null, error: new Error(message) };
+  }
+  return { data: responseData, error: null };
 }
 
 // ─── Public endpoints (no auth needed) ─────────────────────────────────────
