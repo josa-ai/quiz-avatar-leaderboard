@@ -37,7 +37,7 @@ function toHex(buf: ArrayBuffer): string {
     .join("");
 }
 
-function fromHex(hex: string): Uint8Array {
+function fromHex(hex: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
@@ -99,7 +99,7 @@ function base64UrlEncode(data: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function base64UrlDecode(str: string): Uint8Array {
+function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
   str = str.replace(/-/g, "+").replace(/_/g, "/");
   while (str.length % 4) str += "=";
   const binary = atob(str);
@@ -317,21 +317,12 @@ Deno.serve(async (req) => {
           password = validateString(data.password, "password", 128);
           if (password.length < 8) throw new Error("Password must be at least 8 characters");
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
         const avatar = typeof data.avatar === "string" ? data.avatar.slice(0, 500) : "";
 
-        // Check existing user
-        const { data: existing } = await supabase
-          .from("users")
-          .select("id")
-          .or(`email.eq.${email},username.eq.${username}`)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          return respond({ error: "Email or username already taken" }, 409);
-        }
-
+        // Let the unique constraints check duplicates. Never interpolate signup
+        // values into PostgREST filter grammar or return database error details.
         const passwordHash = await hashPassword(password);
         const { data: newUser, error: insertErr } = await supabase
           .from("users")
@@ -345,7 +336,10 @@ Deno.serve(async (req) => {
           .single();
 
         if (insertErr) {
-          return respond({ error: insertErr.message }, 500);
+          if (insertErr.code === "23505") {
+            return respond({ error: "Email or username already taken" }, 409);
+          }
+          return respond({ error: "Registration failed" }, 500);
         }
 
         const regToken = await signJWT(
@@ -403,7 +397,7 @@ Deno.serve(async (req) => {
           validatedResults = data.roundResults ? validateRoundResults(data.roundResults) : [];
           validatedMembers = data.teamMembers ? validateMembers(data.teamMembers) : [];
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         // Insert game session
@@ -419,7 +413,7 @@ Deno.serve(async (req) => {
           });
 
         if (sessionErr) {
-          return respond({ error: sessionErr.message }, 500);
+          return respond({ error: "Unable to complete request" }, 500);
         }
 
         // Insert leaderboard entry
@@ -476,7 +470,7 @@ Deno.serve(async (req) => {
 
         let query = supabase
           .from("leaderboard_entries")
-          .select("*, users(id, username, avatar, total_points, games_played, games_won, email)")
+          .select("score, created_at, users(id, username, avatar, total_points, games_played, games_won)")
           .order("score", { ascending: false })
           .limit(limit);
 
@@ -491,7 +485,7 @@ Deno.serve(async (req) => {
         const { data: entries, error: leaderErr } = await query;
 
         if (leaderErr) {
-          return respond({ error: leaderErr.message }, 500);
+          return respond({ error: "Unable to complete request" }, 500);
         }
 
         const leaderboard = (entries || []).map(
@@ -503,14 +497,13 @@ Deno.serve(async (req) => {
                 ? {
                     id: user.id,
                     username: user.username,
-                    email: user.email || "",
                     avatar: user.avatar || "",
                     points: user.total_points || 0,
                     rank: index + 1,
                     gamesPlayed: user.games_played || 0,
                     wins: user.games_won || 0,
                   }
-                : { id: "", username: "Unknown", email: "", avatar: "", points: 0, rank: index + 1, gamesPlayed: 0, wins: 0 },
+                : { id: "", username: "Unknown", avatar: "", points: 0, rank: index + 1, gamesPlayed: 0, wins: 0 },
               score: entry.score,
               date: entry.created_at,
             };
@@ -603,7 +596,7 @@ Deno.serve(async (req) => {
           });
 
         if (practiceErr) {
-          return respond({ error: practiceErr.message }, 500);
+          return respond({ error: "Unable to complete request" }, 500);
         }
 
         return respond({ success: true });
@@ -642,7 +635,7 @@ Deno.serve(async (req) => {
           teamName = validateString(data.teamName, "teamName", 100);
           validatedMembers = data.members ? validateMembers(data.members) : [];
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         // Max 5 teams per user
@@ -665,7 +658,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (teamErr) return respond({ error: teamErr.message }, 500);
+        if (teamErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ team });
       }
 
@@ -677,7 +670,7 @@ Deno.serve(async (req) => {
           .eq("owner_id", authUserId)
           .order("created_at", { ascending: false });
 
-        if (teamsErr) return respond({ error: teamsErr.message }, 500);
+        if (teamsErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ teams: teams || [] });
       }
 
@@ -689,7 +682,7 @@ Deno.serve(async (req) => {
           if (data.teamName !== undefined) updates.team_name = validateString(data.teamName, "teamName", 100);
           if (data.members !== undefined) updates.members = validateMembers(data.members);
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         const { data: team, error: updateErr } = await supabase
@@ -700,7 +693,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (updateErr) return respond({ error: updateErr.message }, 500);
+        if (updateErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ team });
       }
 
@@ -713,7 +706,7 @@ Deno.serve(async (req) => {
           .eq("id", teamId)
           .eq("owner_id", authUserId);
 
-        if (deleteErr) return respond({ error: deleteErr.message }, 500);
+        if (deleteErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ success: true });
       }
 
@@ -737,7 +730,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (challengeErr) return respond({ error: challengeErr.message }, 500);
+        if (challengeErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ challenge });
       }
 
@@ -750,7 +743,7 @@ Deno.serve(async (req) => {
           chalResults = data.roundResults ? validateRoundResults(data.roundResults) : [];
           chalMembers = data.teamMembers ? validateMembers(data.teamMembers) : [];
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         const { data: challenge, error: chalErr } = await supabase
@@ -766,7 +759,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (chalErr) return respond({ error: chalErr.message }, 500);
+        if (chalErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ challenge });
       }
 
@@ -776,7 +769,7 @@ Deno.serve(async (req) => {
         try {
           challengeCode = validateChallengeCode(data.challengeCode);
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         const { data: challenge, error: findErr } = await supabase
@@ -808,7 +801,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (joinErr) return respond({ error: joinErr.message }, 500);
+        if (joinErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ challenge: updated });
       }
 
@@ -821,7 +814,7 @@ Deno.serve(async (req) => {
           oppResults = data.roundResults ? validateRoundResults(data.roundResults) : [];
           oppMembers = data.teamMembers ? validateMembers(data.teamMembers) : [];
         } catch (e) {
-          return respond({ error: e.message }, 400);
+          return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
 
         const { data: challenge, error: oppErr } = await supabase
@@ -837,7 +830,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (oppErr) return respond({ error: oppErr.message }, 500);
+        if (oppErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ challenge });
       }
 
@@ -849,7 +842,7 @@ Deno.serve(async (req) => {
           .or(`challenger_id.eq.${authUserId},opponent_id.eq.${authUserId}`)
           .order("created_at", { ascending: false });
 
-        if (listErr) return respond({ error: listErr.message }, 500);
+        if (listErr) return respond({ error: "Unable to complete request" }, 500);
 
         const mapped = (challenges || []).map((c: Record<string, unknown>) => {
           const challenger = c.challenger as Record<string, unknown> | null;
@@ -910,7 +903,7 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false })
           .range(histOffset, histOffset + histLimit - 1);
 
-        if (histErr) return respond({ error: histErr.message }, 500);
+        if (histErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ sessions: sessions || [] });
       }
 
@@ -927,7 +920,7 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
-        if (profErr) return respond({ error: profErr.message }, 500);
+        if (profErr) return respond({ error: "Unable to complete request" }, 500);
         return respond({ user: mapUserRow(userRow) });
       }
 
@@ -936,6 +929,6 @@ Deno.serve(async (req) => {
     }
   } catch (err) {
     console.error("Edge function error:", err);
-    return respond({ error: err.message || "Internal server error" }, 500);
+    return respond({ error: "Internal server error" }, 500);
   }
 });

@@ -296,16 +296,16 @@ export const prizes: Prize[] = [
 ];
 
 export const mockLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, user: { id: '1', username: 'MathWizard99', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 15000, rank: 1, gamesPlayed: 50, wins: 45 }, score: 9850, date: '2026-01-12' },
-  { rank: 2, user: { id: '2', username: 'ScienceQueen', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 14200, rank: 2, gamesPlayed: 48, wins: 40 }, score: 9720, date: '2026-01-12' },
-  { rank: 3, user: { id: '3', username: 'HistoryBuff', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321811522_a9a123dd.png', points: 13500, rank: 3, gamesPlayed: 45, wins: 38 }, score: 9650, date: '2026-01-11' },
-  { rank: 4, user: { id: '4', username: 'WordSmith', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321872035_87a820c3.png', points: 12800, rank: 4, gamesPlayed: 42, wins: 35 }, score: 9500, date: '2026-01-11' },
-  { rank: 5, user: { id: '5', username: 'BrainiacX', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 12000, rank: 5, gamesPlayed: 40, wins: 32 }, score: 9350, date: '2026-01-10' },
-  { rank: 6, user: { id: '6', username: 'QuizMaster', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 11500, rank: 6, gamesPlayed: 38, wins: 30 }, score: 9200, date: '2026-01-10' },
-  { rank: 7, user: { id: '7', username: 'StudyPro', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321811522_a9a123dd.png', points: 11000, rank: 7, gamesPlayed: 36, wins: 28 }, score: 9050, date: '2026-01-09' },
-  { rank: 8, user: { id: '8', username: 'AcePilot', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321872035_87a820c3.png', points: 10500, rank: 8, gamesPlayed: 34, wins: 26 }, score: 8900, date: '2026-01-09' },
-  { rank: 9, user: { id: '9', username: 'TopStudent', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 10000, rank: 9, gamesPlayed: 32, wins: 24 }, score: 8750, date: '2026-01-08' },
-  { rank: 10, user: { id: '10', username: 'ChampionX', email: '', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 9500, rank: 10, gamesPlayed: 30, wins: 22 }, score: 8600, date: '2026-01-08' },
+  { rank: 1, user: { id: '1', username: 'MathWizard99', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 15000, rank: 1, gamesPlayed: 50, wins: 45 }, score: 9850, date: '2026-01-12' },
+  { rank: 2, user: { id: '2', username: 'ScienceQueen', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 14200, rank: 2, gamesPlayed: 48, wins: 40 }, score: 9720, date: '2026-01-12' },
+  { rank: 3, user: { id: '3', username: 'HistoryBuff', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321811522_a9a123dd.png', points: 13500, rank: 3, gamesPlayed: 45, wins: 38 }, score: 9650, date: '2026-01-11' },
+  { rank: 4, user: { id: '4', username: 'WordSmith', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321872035_87a820c3.png', points: 12800, rank: 4, gamesPlayed: 42, wins: 35 }, score: 9500, date: '2026-01-11' },
+  { rank: 5, user: { id: '5', username: 'BrainiacX', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 12000, rank: 5, gamesPlayed: 40, wins: 32 }, score: 9350, date: '2026-01-10' },
+  { rank: 6, user: { id: '6', username: 'QuizMaster', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 11500, rank: 6, gamesPlayed: 38, wins: 30 }, score: 9200, date: '2026-01-10' },
+  { rank: 7, user: { id: '7', username: 'StudyPro', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321811522_a9a123dd.png', points: 11000, rank: 7, gamesPlayed: 36, wins: 28 }, score: 9050, date: '2026-01-09' },
+  { rank: 8, user: { id: '8', username: 'AcePilot', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321872035_87a820c3.png', points: 10500, rank: 8, gamesPlayed: 34, wins: 26 }, score: 8900, date: '2026-01-09' },
+  { rank: 9, user: { id: '9', username: 'TopStudent', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg', points: 10000, rank: 9, gamesPlayed: 32, wins: 24 }, score: 8750, date: '2026-01-08' },
+  { rank: 10, user: { id: '10', username: 'ChampionX', avatar: 'https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321810567_99563e03.jpg', points: 9500, rank: 10, gamesPlayed: 30, wins: 22 }, score: 8600, date: '2026-01-08' },
 ];
 
 export const hostQuotes = {

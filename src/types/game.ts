@@ -37,9 +37,12 @@ export interface GameState {
   gameMode: 'solo' | 'vs';
 }
 
+// Public profiles must never carry account contact details or auth tokens.
+export type PublicUser = Omit<User, 'email' | 'token'>;
+
 export interface LeaderboardEntry {
   rank: number;
-  user: User;
+  user: PublicUser;
   score: number;
   date: string;
 }
