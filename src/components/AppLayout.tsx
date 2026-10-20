@@ -1,7 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { User, TeamMember, Prize, RoundResult, Challenge } from '@/types/game';
-import { saveGameSession, subscribeToUserUpdates, createChallenge, submitChallengerScore, submitOpponentScore, getChallenge, setAuthToken } from '@/lib/gameService';
+import { saveGameSession, getUserStats, logoutUser, createChallenge, submitChallengerScore, submitOpponentScore, getChallenge, setAuthToken } from '@/lib/gameService';
 import SplashScreen from './game/SplashScreen';
+import RegistrationThanks from './game/RegistrationThanks';
+import ChangePasswordPage from './game/ChangePasswordPage';
+import ContactsExportPage from './game/ContactsExportPage';
+import { readSessionToken, storeSession, clearSession } from '@/lib/session';
 import LoginPage from './game/LoginPage';
 import RegisterPage from './game/RegisterPage';
 import HomePage from './game/HomePage';
@@ -22,6 +26,9 @@ import ChallengeResultsPage from './game/ChallengeResultsPage';
 import ChallengeListPage from './game/ChallengeListPage';
 
 type GameScreen =
+  | 'thanks'
+  | 'changePassword'
+  | 'contactsExport'
   | 'splash'
   | 'login'
   | 'register'
@@ -43,27 +50,11 @@ type GameScreen =
   | 'challengeList';
 
 const AppLayout: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<GameScreen>(() => {
-    try {
-      const saved = localStorage.getItem('finalexam_user');
-      if (saved) return 'home' as GameScreen;
-    } catch {}
-    return 'splash' as GameScreen;
-  });
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('finalexam_user');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return null;
-  });
-  // Restore auth token from localStorage on init
-  useState(() => {
-    try {
-      const token = localStorage.getItem('finalexam_token');
-      if (token) setAuthToken(token);
-    } catch {}
-  });
+  const [currentScreen, setCurrentScreen] = useState<GameScreen>('splash');
+  const [user, setUser] = useState<User | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [sessionProblem, setSessionProblem] = useState('');
+  const sessionEpoch = useRef(0);
 
   const [gameMode, setGameMode] = useState<'solo' | 'vs'>('solo');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -77,53 +68,71 @@ const AppLayout: React.FC = () => {
   const [challengeRole, setChallengeRole] = useState<'challenger' | 'opponent' | null>(null);
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
 
-  // Subscribe to real-time user updates when logged in
-  useEffect(() => {
-    if (user && user.id && !user.id.startsWith('demo-')) {
-      const unsubscribe = subscribeToUserUpdates(user.id, (updatedUser) => {
-        setUser(updatedUser);
-      });
-      return () => unsubscribe();
-    }
-  }, [user?.id]);
-
-  // Splash complete
-  const handleSplashComplete = useCallback(() => {
-    setCurrentScreen('login');
-  }, []);
-
-  // Login
-  const handleLogin = useCallback((loggedInUser: User, token?: string) => {
-    setUser(loggedInUser);
-    setCurrentScreen('home');
-    try { localStorage.setItem('finalexam_user', JSON.stringify(loggedInUser)); } catch {}
-    if (token) {
-      setAuthToken(token);
-      try { localStorage.setItem('finalexam_token', token); } catch {}
-    }
-  }, []);
-
-  // Register
-  const handleRegister = useCallback((newUser: User, token?: string) => {
-    setUser(newUser);
-    setCurrentScreen('home');
-    try { localStorage.setItem('finalexam_user', JSON.stringify(newUser)); } catch {}
-    if (token) {
-      setAuthToken(token);
-      try { localStorage.setItem('finalexam_token', token); } catch {}
-    }
-  }, []);
-
-  // Logout
-  const handleLogout = useCallback(() => {
-    setUser(null);
-    setCurrentScreen('login');
+  const forgetSession = useCallback(() => {
+    sessionEpoch.current++;
     setAuthToken(null);
-    try {
-      localStorage.removeItem('finalexam_user');
-      localStorage.removeItem('finalexam_token');
-    } catch {}
+    clearSession();
+    setUser(null);
+    setCheckingSession(false);
+    setSessionProblem('');
+    setCurrentScreen('splash');
   }, []);
+
+  const acceptSession = useCallback((account: User, token: string) => {
+    sessionEpoch.current++;
+    setAuthToken(token);
+    storeSession(account, token);
+    setUser(account);
+    setCheckingSession(false);
+    setSessionProblem('');
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const epoch = sessionEpoch.current;
+    window.addEventListener('finalexam:session-expired', forgetSession);
+    const token = readSessionToken();
+    if (!token) {
+      setCheckingSession(false);
+    } else {
+      setAuthToken(token);
+      getUserStats().then(result => {
+        if (!active || sessionEpoch.current !== epoch) return;
+        if (result.data?.user) {
+          acceptSession(result.data.user, token);
+          setCurrentScreen('home');
+        } else {
+          setSessionProblem('We could not verify your session. Please retry or sign in again.');
+          setCheckingSession(false);
+        }
+      }).catch(() => {
+        if (active && sessionEpoch.current === epoch) {
+          setSessionProblem('Unable to connect. Please retry or sign in again.');
+          setCheckingSession(false);
+        }
+      });
+    }
+    return () => { active = false; window.removeEventListener('finalexam:session-expired', forgetSession); };
+  }, [acceptSession, forgetSession]);
+
+  const handleLogin = useCallback((account: User, token: string) => {
+    acceptSession(account, token);
+    setCurrentScreen('home');
+  }, [acceptSession]);
+
+  const handleRegister = useCallback((account: User, token: string) => {
+    acceptSession(account, token);
+    setCurrentScreen('thanks');
+  }, [acceptSession]);
+
+  const handleThanksComplete = useCallback(() => setCurrentScreen('home'), []);
+
+  const handleLogout = useCallback(async () => {
+    sessionEpoch.current++;
+    setCheckingSession(true);
+    try { await logoutUser(); }
+    finally { forgetSession(); }
+  }, [forgetSession]);
 
   // Start game
   const handleStartGame = useCallback((mode: 'solo' | 'vs', members: TeamMember[]) => {
@@ -190,7 +199,7 @@ const AppLayout: React.FC = () => {
     setRoundResults(finalResults);
 
     // Save game session to database
-    if (user && !user.id.startsWith('demo-')) {
+    if (user) {
       setIsSavingGame(true);
       try {
         const result = await saveGameSession(
@@ -276,12 +285,11 @@ const AppLayout: React.FC = () => {
   // Handle user update (from settings avatar change)
   const handleUserUpdate = useCallback((updatedUser: User) => {
     setUser(updatedUser);
-    try { localStorage.setItem('finalexam_user', JSON.stringify(updatedUser)); } catch {}
   }, []);
 
   // Challenge: create
   const handleCreateChallenge = useCallback(async () => {
-    if (!user || user.id.startsWith('demo-')) return;
+    if (!user) return;
     const result = await createChallenge();
     if (result.data) {
       setActiveChallengeId(result.data.id);
@@ -350,15 +358,37 @@ const AppLayout: React.FC = () => {
 
   // Render current screen
   const renderScreen = () => {
+    if (checkingSession || sessionProblem) return (
+      <main className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6 text-center">
+        <div>
+          <p role="status">{sessionProblem || 'Checking your session…'}</p>
+          {sessionProblem && <div className="flex gap-4 mt-6 justify-center">
+            <button onClick={() => window.location.reload()} className="text-cyan-300 underline">Retry</button>
+            <button onClick={forgetSession} className="text-cyan-300 underline">Sign in again</button>
+          </div>}
+        </div>
+      </main>
+    );
+    if (!user && !['splash', 'login', 'register'].includes(currentScreen)) {
+      return <SplashScreen onRegister={() => setCurrentScreen('register')} onLogin={() => setCurrentScreen('login')} />;
+    }
+    if (user?.mustChangePassword) return <ChangePasswordPage required onChanged={handleLogin} onBack={handleLogout} />;
     switch (currentScreen) {
       case 'splash':
-        return <SplashScreen onComplete={handleSplashComplete} />;
+        return <SplashScreen onRegister={() => setCurrentScreen('register')} onLogin={() => setCurrentScreen('login')} />;
+      case 'thanks':
+        return user ? <RegistrationThanks onComplete={handleThanksComplete} /> : null;
+      case 'changePassword':
+        return <ChangePasswordPage required={false} onChanged={handleLogin} onBack={() => setCurrentScreen('settings')} />;
+      case 'contactsExport':
+        return user?.isAdmin ? <ContactsExportPage onBack={() => setCurrentScreen('home')} /> : null;
       
       case 'login':
         return (
           <LoginPage 
             onLogin={handleLogin} 
-            onRegister={() => setCurrentScreen('register')} 
+            onRegister={() => setCurrentScreen('register')}
+            onBack={() => setCurrentScreen('splash')}
           />
         );
       
@@ -366,7 +396,8 @@ const AppLayout: React.FC = () => {
         return (
           <RegisterPage 
             onRegister={handleRegister} 
-            onBack={() => setCurrentScreen('login')} 
+            onBack={() => setCurrentScreen('splash')}
+            onLogin={() => setCurrentScreen('login')}
           />
         );
       
@@ -383,6 +414,7 @@ const AppLayout: React.FC = () => {
             onCreateChallenge={handleCreateChallenge}
             onJoinChallenge={handleJoinChallenge}
             onViewChallenges={handleViewChallenges}
+            onExportContacts={() => setCurrentScreen('contactsExport')}
             onLogout={handleLogout}
           />
         ) : null;
@@ -462,6 +494,7 @@ const AppLayout: React.FC = () => {
           <SettingsPage
             user={user}
             onBack={handleGoHome}
+            onChangePassword={() => setCurrentScreen('changePassword')}
             onUserUpdate={handleUserUpdate}
           />
         ) : null;

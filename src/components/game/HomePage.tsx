@@ -15,6 +15,7 @@ interface HomePageProps {
   onJoinChallenge: () => void;
   onViewChallenges: () => void;
   onLogout: () => void;
+  onExportContacts: () => void;
 }
 
 const HomePage: React.FC<HomePageProps> = ({
@@ -28,7 +29,8 @@ const HomePage: React.FC<HomePageProps> = ({
   onCreateChallenge,
   onJoinChallenge,
   onViewChallenges,
-  onLogout
+  onLogout,
+  onExportContacts
 }) => {
   const [selectedMode, setSelectedMode] = useState<'solo' | 'vs' | null>(null);
   const [showTeamSetup, setShowTeamSetup] = useState(false);
@@ -41,7 +43,7 @@ const HomePage: React.FC<HomePageProps> = ({
   const [savingTeam, setSavingTeam] = useState(false);
 
   useEffect(() => {
-    if (!user.id.startsWith('demo-')) {
+    if (user.id) {
       getTeams().then(result => {
         if (result.data) setSavedTeams(result.data);
       });
@@ -115,6 +117,10 @@ const HomePage: React.FC<HomePageProps> = ({
             Logout
           </button>
         </header>
+
+        {user.isAdmin && <div className="mb-6 flex justify-end">
+          <button onClick={onExportContacts} className="px-5 py-3 rounded-xl border border-cyan-400/50 text-cyan-300 hover:bg-cyan-400/10">Export contacts CSV</button>
+        </div>}
 
         {/* AI Host Welcome */}
         <div className="mb-8">
@@ -442,7 +448,7 @@ const HomePage: React.FC<HomePageProps> = ({
               </div>
 
               {/* Save Team */}
-              {teamMembers.length > 0 && !user.id.startsWith('demo-') && (
+              {teamMembers.length > 0 && (
                 <div className="mb-4">
                   {showSaveInput ? (
                     <div className="flex gap-2">

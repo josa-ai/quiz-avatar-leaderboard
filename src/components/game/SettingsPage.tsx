@@ -6,10 +6,11 @@ import { avatarPresets } from '@/data/avatarPresets';
 interface SettingsPageProps {
   user: User;
   onBack: () => void;
+  onChangePassword: () => void;
   onUserUpdate: (user: User) => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack, onUserUpdate }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack, onUserUpdate, onChangePassword }) => {
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('finalexam_audio_muted') === 'true'; } catch { return false; }
   });
@@ -23,7 +24,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack, onUserUpdate 
   };
 
   const handleAvatarSelect = async (avatarUrl: string) => {
-    if (user.id.startsWith('demo-')) return;
     setSavingAvatar(true);
     const result = await updateProfile(avatarUrl);
     if (result.data) {
@@ -97,6 +97,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack, onUserUpdate 
               )}
             </div>
           )}
+        </div>
+
+        <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50 mb-4">
+          <h2 className="text-lg font-semibold text-white mb-4">Account security</h2>
+          <button onClick={onChangePassword} className="text-cyan-300 underline">Change password</button>
         </div>
 
         {/* Audio Section */}

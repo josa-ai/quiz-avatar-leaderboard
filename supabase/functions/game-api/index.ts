@@ -24,7 +24,7 @@ let _currentCorsHeaders: Record<string, string> = {};
 function respond(body: Record<string, unknown>, status = 200, extraHeaders?: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ..._currentCorsHeaders, "Content-Type": "application/json", ...extraHeaders },
+    headers: { ..._currentCorsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store", ...extraHeaders },
   });
 }
 
@@ -119,7 +119,7 @@ async function getHmacKey(secret: string): Promise<CryptoKey> {
 }
 
 async function signJWT(
-  payload: { userId: string; exp: number },
+  payload: { userId: string; exp: number; version?: number },
   secret: string
 ): Promise<string> {
   const header = base64UrlEncode(
@@ -140,7 +140,7 @@ async function signJWT(
 async function verifyJWT(
   token: string,
   secret: string
-): Promise<{ userId: string } | null> {
+): Promise<{ userId: string; version: number } | null> {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   try {
@@ -152,43 +152,37 @@ async function verifyJWT(
       new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
     );
     if (!valid) return null;
+    const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0])));
+    if (header.alg !== "HS256" || header.typ !== "JWT") return null;
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlDecode(parts[1]))
     );
-    if (payload.exp && Date.now() / 1000 > payload.exp) return null;
-    return { userId: payload.userId };
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || Date.now() / 1000 >= payload.exp) return null;
+    if (typeof payload.userId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.userId)) return null;
+    const version = payload.version === undefined ? 0 : payload.version;
+    if (!Number.isSafeInteger(version) || version < 0) return null;
+    return { userId: payload.userId, version };
   } catch {
     return null;
   }
 }
 
-// ─── Rate limiting (in-memory, resets on cold start) ────────────────────────
+async function rateLimitKey(scope: string, value: string): Promise<string> {
+  return `${scope}:${toHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))}`;
+}
 
-const rateLimitMap = new Map<
-  string,
-  { count: number; resetAt: number }
->();
+function validateNewPassword(value: unknown): string {
+  if (typeof value !== "string" || value.length < 12 || value.length > 128 || !value.trim()) {
+    throw new Error("Use a password between 12 and 128 characters");
+  }
+  return value;
+}
 
-function checkRateLimit(
-  key: string,
-  maxAttempts: number,
-  windowMs: number
-): { allowed: boolean; retryAfter: number } {
-  const now = Date.now();
-  // GC expired entries
-  for (const [k, v] of rateLimitMap) {
-    if (v.resetAt <= now) rateLimitMap.delete(k);
-  }
-  const entry = rateLimitMap.get(key);
-  if (!entry || entry.resetAt <= now) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, retryAfter: 0 };
-  }
-  entry.count++;
-  if (entry.count > maxAttempts) {
-    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-  return { allowed: true, retryAfter: 0 };
+function csvCell(value: unknown): string {
+  let text = value == null ? "" : String(value);
+  // Protect spreadsheet import, including whitespace-prefixed formula payloads.
+  if (/^\s*[=+\-@]/u.test(text) || /^[\t\r\n]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 // ─── Input validation helpers ───────────────────────────────────────────────
@@ -241,6 +235,9 @@ function mapUserRow(row: Record<string, unknown>) {
   return {
     id: row.id,
     email: row.email,
+    fullName: row.full_name || null,
+    isAdmin: row.is_admin === true,
+    mustChangePassword: row.must_change_password === true,
     username: row.username,
     avatar: row.avatar || "",
     points: row.total_points || 0,
@@ -262,11 +259,12 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { action, data } = await req.json();
+    const { action, data = {} } = await req.json();
 
     // ─── Auth guard ────────────────────────────────────────────
     const publicActions = new Set(["login", "register", "getLeaderboard"]);
     let authUserId: string | null = null;
+    let authUser: Record<string, unknown> | null = null;
 
     if (!publicActions.has(action)) {
       const token = req.headers.get("x-app-token") || null;
@@ -278,6 +276,16 @@ Deno.serve(async (req) => {
         return respond({ error: "Invalid or expired token" }, 401);
       }
       authUserId = claims.userId;
+      const { data: account, error: accountError } = await supabase.from("users")
+        .select("*").eq("id", authUserId).single();
+      if (accountError && accountError.code !== "PGRST116") return respond({ error: "Unable to validate session" }, 503);
+      if (!account || (account.auth_version || 0) !== claims.version) {
+        return respond({ error: "Please sign in again" }, 401);
+      }
+      authUser = account;
+      if (account.must_change_password && !["getUserStats", "changePassword", "logout"].includes(action)) {
+        return respond({ error: "Change your temporary password before continuing" }, 403);
+      }
     }
 
     // ─── Rate limiting for login/register ──────────────────────
@@ -286,40 +294,36 @@ Deno.serve(async (req) => {
       req.headers.get("cf-connecting-ip") ||
       "unknown";
 
+    const checks: [string, string, number, number][] = [];
     if (action === "login") {
-      const rl = checkRateLimit(`login:${clientIp}`, 10, 15 * 60 * 1000);
-      if (!rl.allowed) {
-        return respond(
-          { error: "Too many login attempts. Please try again later." },
-          429,
-          { "Retry-After": String(rl.retryAfter) }
-        );
-      }
-    }
-    if (action === "register") {
-      const rl = checkRateLimit(`register:${clientIp}`, 5, 60 * 60 * 1000);
-      if (!rl.allowed) {
-        return respond(
-          { error: "Too many registration attempts. Please try again later." },
-          429,
-          { "Retry-After": String(rl.retryAfter) }
-        );
-      }
+      checks.push(["login-ip", clientIp, 30, 900], ["login-account", typeof data.email === "string" ? data.email.trim().toLowerCase() : "", 10, 900]);
+    } else if (action === "register") checks.push(["register", clientIp, 5, 3600]);
+    else if (["changePassword", "exportContacts"].includes(action)) checks.push(["reauth", authUserId!, 10, 900]);
+    for (const [scope, value, limit, seconds] of checks) {
+      const { data: rl, error } = await supabase.rpc("consume_auth_attempt", {
+        p_key: await rateLimitKey(scope, value), p_limit: limit, p_window_seconds: seconds,
+      });
+      if (error || !rl) return respond({ error: "Unable to verify request. Please try again." }, 503);
+      if (rl.allowed !== true) return respond({ error: "Too many attempts. Please try again later." }, 429,
+        { "Retry-After": String(rl.retry_after) });
     }
 
     switch (action) {
       // ─── REGISTER ──────────────────────────────────────────────
       case "register": {
-        let email: string, username: string, password: string;
+        let email: string, fullName: string, password: string;
         try {
-          email = validateEmail(data.email);
-          username = validateString(data.username, "username", 50);
-          password = validateString(data.password, "password", 128);
-          if (password.length < 8) throw new Error("Password must be at least 8 characters");
+          email = validateEmail(data.email).toLowerCase();
+          fullName = validateString(data.fullName, "Full name", 120);
+          if ([...fullName].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) throw new Error("Full name contains invalid characters");
+          password = validateNewPassword(data.password);
+          if (data.adultConfirmed !== true) throw new Error("Please confirm you are 18 or older");
+          if (typeof data.marketingOptIn !== "boolean") throw new Error("Please choose your email preference");
         } catch (e) {
           return respond({ error: e instanceof Error ? e.message : "Invalid input" }, 400);
         }
-        const avatar = typeof data.avatar === "string" ? data.avatar.slice(0, 500) : "";
+        const username = `Player-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+        const avatar = "https://d64gsuwffb70l.cloudfront.net/6966729c3239b00ed852b93c_1768321802628_7025bef0.jpg";
 
         // Let the unique constraints check duplicates. Never interpolate signup
         // values into PostgREST filter grammar or return database error details.
@@ -328,6 +332,11 @@ Deno.serve(async (req) => {
           .from("users")
           .insert({
             email,
+            full_name: fullName,
+            marketing_opt_in: data.marketingOptIn,
+            consent_recorded_at: new Date().toISOString(),
+            consent_version: "project-updates-v1",
+            registration_source: "adult_tester",
             username,
             password_hash: passwordHash,
             avatar,
@@ -337,13 +346,13 @@ Deno.serve(async (req) => {
 
         if (insertErr) {
           if (insertErr.code === "23505") {
-            return respond({ error: "Email or username already taken" }, 409);
+            return respond({ error: "An account already uses this email. Please log in." }, 409);
           }
           return respond({ error: "Registration failed" }, 500);
         }
 
         const regToken = await signJWT(
-          { userId: newUser.id as string, exp: Math.floor(Date.now() / 1000) + 86400 },
+          { userId: newUser.id as string, exp: Math.floor(Date.now() / 1000) + 86400, version: 0 },
           serviceRoleKey
         );
         return respond({ user: mapUserRow(newUser), token: regToken });
@@ -353,14 +362,14 @@ Deno.serve(async (req) => {
       case "login": {
         const email = typeof data.email === "string" ? data.email.trim() : "";
         const password = typeof data.password === "string" ? data.password : "";
-        if (!email || !password) {
+        if (!email || !password || email.length > 255 || password.length > 128) {
           return respond({ error: "Email and password are required" }, 400);
         }
 
         const { data: userRow, error: fetchErr } = await supabase
           .from("users")
           .select("*")
-          .eq("email", email)
+          .eq("email_normalized", email.toLowerCase())
           .single();
 
         if (fetchErr || !userRow) {
@@ -375,17 +384,76 @@ Deno.serve(async (req) => {
         // Transparent migration: rehash legacy passwords with PBKDF2
         if (needsRehash) {
           const newHash = await hashPassword(password);
-          await supabase
+          const { data: migrated, error: migrationError } = await supabase
             .from("users")
             .update({ password_hash: newHash })
-            .eq("id", userRow.id);
+            .eq("id", userRow.id)
+            .eq("password_hash", userRow.password_hash)
+            .eq("auth_version", userRow.auth_version || 0)
+            .select("id").single();
+          if (migrationError || !migrated) return respond({ error: "Please sign in again" }, 401);
         }
 
         const loginToken = await signJWT(
-          { userId: userRow.id as string, exp: Math.floor(Date.now() / 1000) + 86400 },
+          { userId: userRow.id as string, exp: Math.floor(Date.now() / 1000) + (userRow.is_admin ? 3600 : 86400), version: userRow.auth_version || 0 },
           serviceRoleKey
         );
         return respond({ user: mapUserRow(userRow), token: loginToken });
+      }
+
+      case "changePassword": {
+        let nextPassword: string;
+        try { nextPassword = validateNewPassword(data.newPassword); }
+        catch (e) { return respond({ error: e instanceof Error ? e.message : "Invalid password" }, 400); }
+        const current = typeof data.currentPassword === "string" ? data.currentPassword : "";
+        if (!current || current.length > 128 || !(await verifyPassword(current, authUser!.password_hash as string)).valid) {
+          return respond({ error: "Current password is incorrect" }, 403);
+        }
+        if (current === nextPassword) return respond({ error: "Choose a different new password" }, 400);
+        const version = Number(authUser!.auth_version || 0);
+        const { data: updated, error } = await supabase.from("users")
+          .update({ password_hash: await hashPassword(nextPassword), auth_version: version + 1, must_change_password: false })
+          .eq("id", authUserId).eq("auth_version", version).select("*").single();
+        if (error || !updated) return respond({ error: "Password was not changed. Please sign in again." }, 409);
+        const token = await signJWT({ userId: authUserId!, version: version + 1,
+          exp: Math.floor(Date.now() / 1000) + (updated.is_admin ? 3600 : 86400) }, serviceRoleKey);
+        return respond({ user: mapUserRow(updated), token });
+      }
+
+      case "logout": {
+        const version = Number(authUser!.auth_version || 0);
+        const { error } = await supabase.from("users").update({ auth_version: version + 1 })
+          .eq("id", authUserId).eq("auth_version", version);
+        if (error) return respond({ error: "Unable to end session" }, 500);
+        return respond({ success: true });
+      }
+
+      case "exportContacts": {
+        // Role comes from the database on this request, never a body, cached
+        // browser profile or user-editable token claim. No hashes in the CSV.
+        if (authUser!.is_admin !== true) return respond({ error: "Administrator access required" }, 403);
+        const password = typeof data.password === "string" ? data.password : "";
+        if (!password || password.length > 128 || !(await verifyPassword(password, authUser!.password_hash as string)).valid) {
+          return respond({ error: "Password is incorrect" }, 403);
+        }
+        if (data.optedInOnly !== undefined && typeof data.optedInOnly !== "boolean") return respond({ error: "Invalid export filter" }, 400);
+        const records: Record<string, unknown>[] = [];
+        for (let offset = 0; ; offset += 1000) {
+          let query = supabase.from("users").select("id,full_name,email,created_at,marketing_opt_in,consent_recorded_at")
+            .eq("is_admin", false).order("created_at", { ascending: true }).order("id", { ascending: true }).range(offset, offset + 999);
+          if (data.optedInOnly === true) query = query.eq("marketing_opt_in", true);
+          const { data: rows, error } = await query;
+          if (error || !rows) return respond({ error: "Unable to export contacts" }, 500);
+          records.push(...rows);
+          if (rows.length < 1000) break;
+          if (records.length >= 50000) return respond({ error: "Export is too large. Contact the site administrator." }, 413);
+        }
+        const header = ["Full Name", "Email", "Registration Date", "Email Updates Opt-in", "Preference Recorded At"];
+        const lines = [header.map(csvCell).join(","), ...records.map(row => [row.full_name, row.email, row.created_at,
+          row.marketing_opt_in === true ? "Yes" : row.marketing_opt_in === false ? "No" : "Not recorded",
+          row.consent_recorded_at].map(csvCell).join(","))];
+        return respond({ csv: "\uFEFF" + lines.join("\r\n") + "\r\n", count: records.length,
+          filename: `final-exam-contacts-${new Date().toISOString().slice(0, 10)}.csv` });
       }
 
       // ─── SAVE GAME SESSION ─────────────────────────────────────

@@ -2,6 +2,9 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  fullName?: string | null;
+  isAdmin?: boolean;
+  mustChangePassword?: boolean;
   avatar: string;
   points: number;
   rank: number;
@@ -38,7 +41,7 @@ export interface GameState {
 }
 
 // Public profiles must never carry account contact details or auth tokens.
-export type PublicUser = Omit<User, 'email' | 'token'>;
+export type PublicUser = Pick<User, 'id' | 'username' | 'avatar' | 'points' | 'rank' | 'gamesPlayed' | 'wins'>;
 
 export interface LeaderboardEntry {
   rank: number;

@@ -16,9 +16,10 @@ export function setAuthToken(token: string | null) {
 }
 
 async function invokeApi(action: string, data: Record<string, unknown> = {}) {
+  const requestToken = authToken;
   const headers: Record<string, string> = {};
-  if (authToken) {
-    headers['x-app-token'] = authToken;
+  if (requestToken) {
+    headers['x-app-token'] = requestToken;
   }
   const { data: responseData, error } = await supabase.functions.invoke('game-api', {
     body: { action, data },
@@ -34,6 +35,9 @@ async function invokeApi(action: string, data: Record<string, unknown> = {}) {
         if (body?.error) message = body.error;
       }
     } catch {}
+    if (error.context?.status === 401 && requestToken === authToken && action !== 'login' && action !== 'register') {
+      window.dispatchEvent(new Event('finalexam:session-expired'));
+    }
     return { data: null, error: new Error(message) };
   }
   return { data: responseData, error: null };
@@ -44,12 +48,13 @@ async function invokeApi(action: string, data: Record<string, unknown> = {}) {
 // Register a new user
 export async function registerUser(
   email: string,
-  username: string,
+  fullName: string,
   password: string,
-  avatar?: string
+  marketingOptIn: boolean,
+  adultConfirmed: boolean
 ): Promise<GameServiceResponse<{ user: User; token: string }>> {
   try {
-    const { data, error } = await invokeApi('register', { email, username, password, avatar });
+    const { data, error } = await invokeApi('register', { email, fullName, password, marketingOptIn, adultConfirmed });
 
     if (error) throw error;
     if (data.error) throw new Error(data.error);
@@ -59,6 +64,21 @@ export async function registerUser(
     console.error('Register error:', error);
     return { error: error.message || 'Registration failed' };
   }
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<GameServiceResponse<{ user: User; token: string }>> {
+  const { data, error } = await invokeApi('changePassword', { currentPassword, newPassword });
+  return error ? { error: error.message } : { data };
+}
+
+export async function logoutUser(): Promise<GameServiceResponse<{ success: boolean }>> {
+  const { data, error } = await invokeApi('logout');
+  return error ? { error: error.message } : { data };
+}
+
+export async function exportContacts(password: string, optedInOnly: boolean): Promise<GameServiceResponse<{ csv: string; count: number; filename: string }>> {
+  const { data, error } = await invokeApi('exportContacts', { password, optedInOnly });
+  return error ? { error: error.message } : { data };
 }
 
 // Login user
